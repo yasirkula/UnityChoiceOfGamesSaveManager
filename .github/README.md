@@ -6,6 +6,8 @@ This is a hobby Unity project that helps manage save files for [Choice of Games]
 
 The project is created with *Unity 5.6.2f1*, so it can be modified on pretty much any Unity version. For convenience, a portable pre-built Windows executable of the application can be found at the [Releases](https://github.com/yasirkula/UnityChoiceOfGamesSaveManager/releases) page.
 
+**[Support the Developer ☕](https://yasirkula.itch.io/unity3d)**
+
 ## HOW TO
 
 - **Game Save Directory:** You first need to select the desired Choice of Game's Steam save directory. Steam save paths have the following format: `{Steam Cloud Save Folder}/{Game ID}`
