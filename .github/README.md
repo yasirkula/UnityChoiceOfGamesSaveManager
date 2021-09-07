@@ -4,7 +4,7 @@
 
 This is a hobby Unity project that helps manage save files for [Choice of Games](https://store.steampowered.com/search/?publisher=Choice%20of%20Games) and [Hosted Games](https://store.steampowered.com/search/?publisher=Hosted%20Games) that are published on **Steam** platform (tested on Windows only). Note that this application **doesn't allow** you to edit your save files, it just allows you to save your progress manually and/or automatically.
 
-The project is created with *Unity 5.6.2f1*, so it can be modified on pretty much any Unity version. For convenience, a portable pre-built Windows executable of the application can be found at the [Releases]() page.
+The project is created with *Unity 5.6.2f1*, so it can be modified on pretty much any Unity version. For convenience, a portable pre-built Windows executable of the application can be found at the [Releases](https://github.com/yasirkula/UnityChoiceOfGamesSaveManager/releases) page.
 
 ## HOW TO
 
