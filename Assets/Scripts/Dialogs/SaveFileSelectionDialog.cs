@@ -8,7 +8,7 @@ namespace CoGSaveManager
 	{
 #pragma warning disable 0649
 		[SerializeField]
-		private Dropdown dropdown;
+		protected Dropdown dropdown;
 
 		[SerializeField]
 		private Button okButton;

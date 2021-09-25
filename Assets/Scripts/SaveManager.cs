@@ -16,10 +16,13 @@ namespace CoGSaveManager
 
 	public class SaveManager : MonoBehaviour
 	{
-		private const string DEFAULT_PLAYTHROUGH_NAME = "Default";
+		public const string DEFAULT_PLAYTHROUGH_NAME = "Default";
+		private const string PLAYTHROUGH_TIMESTAMP_FILE = "Timestamp";
+
 		private const string MANUAL_SAVES_FOLDER = "ManualSaves";
 		private const string AUTOMATED_SAVES_FOLDER = "AutomatedSaves";
-		private const string GAME_TITLE_FORMAT = "- {0} -";
+
+		private const string GAME_TITLE_FORMAT = "- {0} ({1}) -";
 
 #pragma warning disable 0649
 		[SerializeField]
@@ -71,57 +74,7 @@ namespace CoGSaveManager
 		private Image gameSaveDirectoryBackground;
 #pragma warning restore 0649
 
-		private string m_gameSaveDirectory;
-		private string GameSaveDirectory
-		{
-			get
-			{
-				if( m_gameSaveDirectory == null )
-				{
-					m_gameSaveDirectory = PlayerPrefs.GetString( "GamePath", "" );
-					if( m_gameSaveDirectory.Length > 0 && string.IsNullOrEmpty( GameSaveFilePath ) )
-						gameSaveDirectoryBackground.color = gameSaveDirectoryInvalidColor;
-				}
-
-				return m_gameSaveDirectory;
-			}
-			set
-			{
-				// We should call the setter even if value doesn't change because we want to show saveFileSelectionDialog if there are multiple save files in the directory
-				if( /*m_gameSaveDirectory != value &&*/ !string.IsNullOrEmpty( value ) )
-				{
-					m_gameSaveDirectory = value;
-					gameSaveDirectoryInputField.text = value.ToString();
-
-					// There can be multiple save files in one directory (e.g. 'Heroes Rise' series stores all save files in the same directory)
-					// In that case, we will prompt the user to manually select the desired save file that will be tracked for automated saves
-					string[] gameSaveFilePaths = GetAllSaveFilePaths( value );
-					gameSaveDirectoryBackground.color = gameSaveFilePaths.Length > 0 ? gameSaveDirectoryValidColor : gameSaveDirectoryInvalidColor;
-
-					if( gameSaveFilePaths.Length == 0 )
-						GameSaveFilePath = "";
-					else if( gameSaveFilePaths.Length == 1 )
-						GameSaveFilePath = gameSaveFilePaths[0];
-					else
-					{
-						GameSaveFilePath = "";
-
-						saveFileSelectionDialog.Show( gameSaveFilePaths, GameSaveFilePath, ( selectedSaveFilePath ) =>
-						{
-							GameSaveFilePath = selectedSaveFilePath;
-							LoadSaveFiles();
-						}, false );
-					}
-
-					PlayerPrefs.SetString( "GamePath", value );
-					PlayerPrefs.Save();
-
-					LoadSaveFiles();
-				}
-			}
-		}
-
-		private string m_gameSaveFilePath;
+		private string m_gameSaveFilePath, gameSaveDirectory, currentPlaythrough;
 		private string GameSaveFilePath
 		{
 			get
@@ -132,7 +85,8 @@ namespace CoGSaveManager
 					if( !string.IsNullOrEmpty( m_gameSaveFilePath ) && !File.Exists( m_gameSaveFilePath ) )
 						m_gameSaveFilePath = "";
 
-					gameTitleText.text = ( string.IsNullOrEmpty( m_gameSaveFilePath ) || !File.Exists( m_gameSaveFilePath ) ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( m_gameSaveFilePath ) );
+					currentPlaythrough = string.IsNullOrEmpty( m_gameSaveFilePath ) ? DEFAULT_PLAYTHROUGH_NAME : GetAllPlaythroughs( m_gameSaveFilePath )[0];
+					gameTitleText.text = string.IsNullOrEmpty( m_gameSaveFilePath ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( m_gameSaveFilePath ), currentPlaythrough );
 				}
 
 				return m_gameSaveFilePath;
@@ -141,8 +95,28 @@ namespace CoGSaveManager
 			{
 				if( m_gameSaveFilePath != value )
 				{
+					if( !string.IsNullOrEmpty( value ) && !File.Exists( value ) )
+						value = "";
+
 					m_gameSaveFilePath = value;
-					gameTitleText.text = ( string.IsNullOrEmpty( value ) || !File.Exists( value ) ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( value ) );
+					gameSaveDirectory = !string.IsNullOrEmpty( value ) ? Path.GetDirectoryName( Path.GetDirectoryName( value ) ) : "";
+
+					if( !string.IsNullOrEmpty( gameSaveDirectory ) )
+					{
+						gameSaveDirectoryInputField.text = gameSaveDirectory;
+						gameSaveDirectoryBackground.color = gameSaveDirectoryValidColor;
+					}
+					else
+					{
+						// If we also set gameSaveDirectoryInputField.text to "" here, the input field's text will be cleared when user selects a folder with no valid save files inside it.
+						// Instead, we want the input field's text to stay as is but rather change its color to gameSaveDirectoryInvalidColor
+						gameSaveDirectoryBackground.color = gameSaveDirectoryInvalidColor;
+					}
+
+					if( string.IsNullOrEmpty( currentPlaythrough ) )
+						currentPlaythrough = GetAllPlaythroughs( value )[0];
+
+					gameTitleText.text = string.IsNullOrEmpty( value ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( value ), currentPlaythrough );
 
 					PlayerPrefs.SetString( "GameSaveFilePath", value );
 					PlayerPrefs.Save();
@@ -204,7 +178,7 @@ namespace CoGSaveManager
 				if( m_manualSaveName != value && !string.IsNullOrEmpty( value ) )
 				{
 					m_manualSaveName = value;
-					manualSaveNameInputField.text = value.ToString();
+					manualSaveNameInputField.text = value;
 
 					PlayerPrefs.SetString( "ManualSaveName", value );
 					PlayerPrefs.Save();
@@ -261,7 +235,14 @@ namespace CoGSaveManager
 			gameSaveDirectoryBackground = gameSaveDirectoryInputField.GetComponent<Image>();
 			gameSaveDirectoryValidColor = gameSaveDirectoryBackground.color;
 
-			gameSaveDirectoryInputField.text = GameSaveDirectory;
+			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
+				gameSaveDirectoryInputField.text = gameSaveDirectory = Path.GetDirectoryName( Path.GetDirectoryName( GameSaveFilePath ) );
+			else
+			{
+				gameSaveDirectoryInputField.text = gameSaveDirectory = "";
+				gameSaveDirectoryBackground.color = gameSaveDirectoryInvalidColor;
+			}
+
 			outputDirectoryInputField.text = OutputDirectory;
 			manualSaveNameInputField.text = ManualSaveName;
 			numberOfAutomatedSavesInputField.text = NumberOfAutomatedSaves.ToString();
@@ -274,12 +255,15 @@ namespace CoGSaveManager
 			manualSaveNameInputField.onEndEdit.AddListener( ( value ) =>
 			{
 				// Strip save name of invalid filename characters
-				value = value.Trim();
-				foreach( string invalidFilenameChar in invalidFilenameChars )
-					value = value.Replace( invalidFilenameChar, "" );
+				value = RemoveInvalidFilenameCharsFromString( value );
 
 				if( value.Length > 0 )
-					ManualSaveName = value;
+				{
+					if( ManualSaveName != value )
+						ManualSaveName = value;
+					else // This is required because if value is stripped of invalid filename characters, we need to update the input field to reflect those changes
+						manualSaveNameInputField.text = value;
+				}
 				else
 					manualSaveNameInputField.text = ManualSaveName;
 			} );
@@ -318,7 +302,7 @@ namespace CoGSaveManager
 			{
 				string initialPath = "";
 				if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
-					initialPath = Path.GetDirectoryName( GameSaveDirectory );
+					initialPath = Path.GetDirectoryName( gameSaveDirectory );
 				else
 				{
 					string steamSaveDirectory = GetSteamSavesDirectory();
@@ -329,7 +313,35 @@ namespace CoGSaveManager
 					}
 				}
 
-				FileBrowser.ShowLoadDialog( ( paths ) => GameSaveDirectory = paths[0], null, FileBrowser.PickMode.Folders, initialPath: initialPath, title: "Select the target Choice of Games' save directory" );
+				FileBrowser.ShowLoadDialog( ( paths ) =>
+				{
+					// There can be multiple save files in one directory (e.g. 'Heroes Rise' series stores all save files in the same directory)
+					// In that case, we will prompt the user to manually select the desired save file that will be tracked for automated saves
+					string[] gameSaveFilePaths = GetAllSaveFilePaths( paths[0] );
+					gameSaveDirectoryInputField.text = paths[0];
+					gameSaveDirectoryBackground.color = gameSaveFilePaths.Length > 0 ? gameSaveDirectoryValidColor : gameSaveDirectoryInvalidColor;
+
+					if( gameSaveFilePaths.Length == 0 )
+						GameSaveFilePath = "";
+					else if( gameSaveFilePaths.Length == 1 )
+					{
+						currentPlaythrough = "";
+						GameSaveFilePath = gameSaveFilePaths[0];
+					}
+					else
+					{
+						GameSaveFilePath = "";
+
+						saveFileSelectionDialog.Show( gameSaveFilePaths, GameSaveFilePath, ( selectedSaveFilePath ) =>
+						{
+							currentPlaythrough = "";
+							GameSaveFilePath = selectedSaveFilePath;
+							LoadSaveFiles();
+						}, false );
+					}
+
+					LoadSaveFiles();
+				}, null, FileBrowser.PickMode.Folders, initialPath: initialPath, title: "Select the target Choice of Games' save directory" );
 			} );
 
 			pickOutputDirectoryButton.onClick.AddListener( () => FileBrowser.ShowSaveDialog( ( paths ) => OutputDirectory = paths[0], null, FileBrowser.PickMode.Folders, title: "Select the folder where the save files will be stored", initialPath: OutputDirectory, saveButtonText: "Select" ) );
@@ -345,6 +357,9 @@ namespace CoGSaveManager
 				}
 			} );
 
+			switchGameDialog.playthroughsGetter = GetAllPlaythroughs;
+			switchGameDialog.playthroughNameValidator = RemoveInvalidFilenameCharsFromString;
+
 			gameTitleBackgroundButton.onClick.AddListener( () =>
 			{
 				if( exploredGameSaveFilePaths.Count > 0 )
@@ -353,14 +368,37 @@ namespace CoGSaveManager
 					exploredGameSaveFilePaths.CopyTo( _exploredGameSaveFilePaths );
 					Array.Sort( _exploredGameSaveFilePaths, ( path1, path2 ) => Path.GetFileName( path1 ).CompareTo( Path.GetFileName( path2 ) ) );
 
-					switchGameDialog.Show( _exploredGameSaveFilePaths, GameSaveFilePath, ( selectedSaveFilePath ) =>
+					switchGameDialog.Show( _exploredGameSaveFilePaths, GameSaveFilePath, ( selectedSaveFilePath, selectedPlaythrough ) => // onConfirm
 					{
-						GameSaveDirectory = Path.GetDirectoryName( Path.GetDirectoryName( selectedSaveFilePath ) );
-						GameSaveFilePath = selectedSaveFilePath;
+						currentPlaythrough = !string.IsNullOrEmpty( selectedPlaythrough ) ? selectedPlaythrough : GetAllPlaythroughs( selectedSaveFilePath )[0];
+
+						if( GameSaveFilePath != selectedSaveFilePath )
+							GameSaveFilePath = selectedSaveFilePath;
+						else if( !string.IsNullOrEmpty( selectedSaveFilePath ) ) // If GameSaveFilePath didn't change, we should still update gameTitleText with the new playthrough
+							gameTitleText.text = string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( selectedSaveFilePath ), currentPlaythrough );
+
 						LoadSaveFiles();
 
 						// If changing the value of GameSaveDirectory prompted saveFileSelectionDialog, close it because we've assigned GameSaveFilePath's value manually
 						saveFileSelectionDialog.gameObject.SetActive( false );
+					},
+					( saveFile, playthrough ) => // onDeletePlaythrough
+					{
+						if( !string.IsNullOrEmpty( OutputDirectory ) && !string.IsNullOrEmpty( saveFile ) && File.Exists( saveFile ) )
+						{
+							string playthroughDirectory = Path.Combine( Path.Combine( OutputDirectory, GetSaveFileUserID( saveFile ) ), string.Concat( new FileInfo( saveFile ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFile ), "_", playthrough ) );
+							if( Directory.Exists( playthroughDirectory ) )
+								Directory.Delete( playthroughDirectory, true );
+
+							// If currently active playthrough is deleted, refresh the save files immediately
+							if( saveFile == GameSaveFilePath && playthrough == currentPlaythrough )
+							{
+								currentPlaythrough = GetAllPlaythroughs( GameSaveFilePath )[0];
+								gameTitleText.text = string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( GameSaveFilePath ), currentPlaythrough );
+
+								LoadSaveFiles();
+							}
+						}
 					}, true );
 				}
 			} );
@@ -468,8 +506,8 @@ namespace CoGSaveManager
 
 			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
 			{
-				string saveFileUserID = GetSaveFileUserID( GameSaveFilePath );
-				string rootDirectory = Path.Combine( Path.Combine( OutputDirectory, saveFileUserID ), string.Concat( Path.GetFileName( GameSaveDirectory ), "_", GetReadableSaveFileName( GameSaveFilePath ), "_", DEFAULT_PLAYTHROUGH_NAME ) );
+				string playthrough = string.IsNullOrEmpty( currentPlaythrough ) ? DEFAULT_PLAYTHROUGH_NAME : currentPlaythrough;
+				string rootDirectory = Path.Combine( Path.Combine( OutputDirectory, GetSaveFileUserID( GameSaveFilePath ) ), string.Concat( Path.GetFileName( gameSaveDirectory ), "_", GetReadableSaveFileName( GameSaveFilePath ), "_", playthrough ) );
 				manualSavesDirectory = Path.Combine( rootDirectory, MANUAL_SAVES_FOLDER );
 				automatedSavesDirectory = Path.Combine( rootDirectory, AUTOMATED_SAVES_FOLDER );
 
@@ -480,6 +518,10 @@ namespace CoGSaveManager
 					automatedSaveDirectoryNames.Add( Path.GetFileName( automatedSaves[i].directory ) );
 
 				gameSaveFileDateTime = File.GetLastWriteTime( GameSaveFilePath );
+
+				// Create/update the playthrough timestamp file
+				Directory.CreateDirectory( rootDirectory );
+				File.Create( Path.Combine( rootDirectory, PLAYTHROUGH_TIMESTAMP_FILE ) ).Close();
 			}
 
 			manualSavesScrollView.UpdateList();
@@ -569,14 +611,14 @@ namespace CoGSaveManager
 		private void SaveInternal( string rootDirectory )
 		{
 			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
-				CopyDirectoryRecursively( GameSaveDirectory, rootDirectory );
+				CopyDirectoryRecursively( gameSaveDirectory, rootDirectory );
 		}
 
 		private bool LoadGame( string rootDirectory )
 		{
-			if( !string.IsNullOrEmpty( GameSaveDirectory ) && !string.IsNullOrEmpty( GetSaveFilePath( rootDirectory ) ) && Directory.Exists( GameSaveDirectory ) )
+			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
 			{
-				CopyDirectoryRecursively( rootDirectory, GameSaveDirectory );
+				CopyDirectoryRecursively( rootDirectory, gameSaveDirectory );
 				return true;
 			}
 
@@ -686,6 +728,43 @@ namespace CoGSaveManager
 			return "";
 		}
 
+		private string[] GetAllPlaythroughs( string saveFilePath )
+		{
+			if( !string.IsNullOrEmpty( OutputDirectory ) && !string.IsNullOrEmpty( saveFilePath ) && Directory.Exists( OutputDirectory ) && File.Exists( saveFilePath ) )
+			{
+				string rootDirectory = Path.Combine( OutputDirectory, GetSaveFileUserID( saveFilePath ) );
+				string saveDirectoryPrefix = string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath ), "_" );
+
+				string[] allPlaythroughs = Directory.GetDirectories( rootDirectory, saveDirectoryPrefix + "*", SearchOption.TopDirectoryOnly );
+				if( allPlaythroughs.Length == 1 )
+					return new string[1] { Path.GetFileName( allPlaythroughs[0] ).Substring( saveDirectoryPrefix.Length ) };
+				else if( allPlaythroughs.Length > 1 )
+				{
+					DateTime[] playthroughTimestamps = new DateTime[allPlaythroughs.Length];
+					for( int i = 0; i < allPlaythroughs.Length; i++ )
+					{
+						FileInfo timestampFile = new FileInfo( Path.Combine( allPlaythroughs[i], PLAYTHROUGH_TIMESTAMP_FILE ) );
+						if( timestampFile.Exists )
+							playthroughTimestamps[i] = timestampFile.LastWriteTime;
+						else
+							playthroughTimestamps[i] = new DateTime();
+					}
+
+					// Sort playthroughs using their timestamps in descending order (most recently modified playthrough comes first)
+					Array.Sort( playthroughTimestamps, allPlaythroughs );
+					Array.Reverse( allPlaythroughs );
+
+					string[] result = new string[allPlaythroughs.Length];
+					for( int i = 0; i < allPlaythroughs.Length; i++ )
+						result[i] = Path.GetFileName( allPlaythroughs[i] ).Substring( saveDirectoryPrefix.Length );
+
+					return result;
+				}
+			}
+
+			return new string[1] { DEFAULT_PLAYTHROUGH_NAME };
+		}
+
 		private string GetSteamSavesDirectory()
 		{
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
@@ -738,6 +817,15 @@ namespace CoGSaveManager
 				string tempPath = Path.Combine( destinationDirectory, subDirectory.Name );
 				CopyDirectoryRecursively( subDirectory.FullName, tempPath );
 			}
+		}
+
+		private string RemoveInvalidFilenameCharsFromString( string str )
+		{
+			str = str.Trim();
+			foreach( string invalidFilenameChar in invalidFilenameChars )
+				str = str.Replace( invalidFilenameChar, "" );
+
+			return str;
 		}
 
 		// In v1.2.0, save files have changes as follows compared to v1.0.0:

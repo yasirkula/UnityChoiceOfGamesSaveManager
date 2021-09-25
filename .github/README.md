@@ -28,3 +28,7 @@ The project is created with *Unity 5.6.2f1*, so it can be modified on pretty muc
 - To switch between previously explored Choice of Games (without having to change *Game Save Directory* manually at each time), you can click the current game's title ("*- communitycollegehero -*" in the first screenshot) and choose the target game from the list. Every time this application is launched, it tries to populate this list automatically by checking the contents of the Steam save directory. Thus, you probably won't need to enter *Game Save Directory* manually for a game at all, the game will likely be explored automatically by the application at startup
 
 ![Screenshot](Images/GameSelectionDialog.png)
+
+- You can create different playthroughs for each game. Each playthrough will have its own save files. To create a new playthrough or switch between playthroughs, you can click the current game's title ("*- communitycollegehero -*" in the first screenshot) and choose the desired playthrough from the list
+
+![Screenshot](Images/PlaythroughSelectionDialog.png)
