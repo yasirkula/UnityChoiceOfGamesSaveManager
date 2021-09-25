@@ -1,5 +1,6 @@
 ﻿using SimpleFileBrowser;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -15,6 +16,9 @@ namespace CoGSaveManager
 
 	public class SaveManager : MonoBehaviour
 	{
+		private const string DEFAULT_PLAYTHROUGH_NAME = "Default";
+		private const string MANUAL_SAVES_FOLDER = "ManualSaves";
+		private const string AUTOMATED_SAVES_FOLDER = "AutomatedSaves";
 		private const string GAME_TITLE_FORMAT = "- {0} -";
 
 #pragma warning disable 0649
@@ -57,6 +61,9 @@ namespace CoGSaveManager
 
 		[SerializeField]
 		private ReducedAutomatedSaveCountDialog reducedAutomatedSaveCountDialog;
+
+		[SerializeField]
+		private ProgressbarDialog progressbarDialog;
 
 		[SerializeField]
 		private Color gameSaveDirectoryInvalidColor;
@@ -225,6 +232,16 @@ namespace CoGSaveManager
 					PlayerPrefs.SetInt( "AutoSaveCount", value );
 					PlayerPrefs.Save();
 				}
+			}
+		}
+
+		private bool MigratedSaveFilesToV1_2_0
+		{
+			get { return PlayerPrefs.GetInt( "SaveMigration1_2_0", 0 ) == 1; }
+			set
+			{
+				PlayerPrefs.SetInt( "SaveMigration1_2_0", value ? 1 : 0 );
+				PlayerPrefs.Save();
 			}
 		}
 
@@ -403,6 +420,9 @@ namespace CoGSaveManager
 
 			LoadSaveFiles();
 
+			if( !MigratedSaveFilesToV1_2_0 )
+				StartCoroutine( MigrateSaveFilesToV1_2_0() );
+
 			nextAutomatedSaveCheckTime = Time.time + saveCheckInterval;
 			Application.targetFrameRate = 60;
 		}
@@ -448,9 +468,10 @@ namespace CoGSaveManager
 
 			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
 			{
-				string rootDirectory = Path.Combine( OutputDirectory, Path.GetFileName( GameSaveDirectory ) + "_" + GetReadableSaveFileName( GameSaveFilePath ) );
-				manualSavesDirectory = Path.Combine( rootDirectory, "ManualSaves" );
-				automatedSavesDirectory = Path.Combine( rootDirectory, "AutomatedSaves" );
+				string saveFileUserID = GetSaveFileUserID( GameSaveFilePath );
+				string rootDirectory = Path.Combine( Path.Combine( OutputDirectory, saveFileUserID ), string.Concat( Path.GetFileName( GameSaveDirectory ), "_", GetReadableSaveFileName( GameSaveFilePath ), "_", DEFAULT_PLAYTHROUGH_NAME ) );
+				manualSavesDirectory = Path.Combine( rootDirectory, MANUAL_SAVES_FOLDER );
+				automatedSavesDirectory = Path.Combine( rootDirectory, AUTOMATED_SAVES_FOLDER );
 
 				LoadSaveFiles( manualSavesDirectory, manualSaves, true );
 				LoadSaveFiles( automatedSavesDirectory, automatedSaves, false );
@@ -696,6 +717,11 @@ namespace CoGSaveManager
 				return filename.Substring( 0, filename.Length - "PSstate".Length );
 		}
 
+		public static string GetSaveFileUserID( string saveFilePath )
+		{
+			return new FileInfo( saveFilePath ).Directory.Parent.Parent.Name;
+		}
+
 		private void CopyDirectoryRecursively( string sourceDirectory, string destinationDirectory )
 		{
 			Directory.CreateDirectory( destinationDirectory );
@@ -712,6 +738,82 @@ namespace CoGSaveManager
 				string tempPath = Path.Combine( destinationDirectory, subDirectory.Name );
 				CopyDirectoryRecursively( subDirectory.FullName, tempPath );
 			}
+		}
+
+		// In v1.2.0, save files have changes as follows compared to v1.0.0:
+		// - Save files are grouped under Steam User IDs so that each Steam user's save files will be stored in a separate directory
+		// - A game can have multiple playthroughs and each playthrough's save files will be stored in a separate directory
+		//   (the default playthrough's name is DEFAULT_PLAYTHROUGH_NAME)
+		// 
+		// So, a legacy save file "565980_evertreeinn" will now be renamed as "{USER_ID}\565980_evertreeinn_{DEFAULT_PLAYTHROUGH_NAME}"
+		// Legacy save files won't be deleted after migration so that even if something unexpected happens during migration, users won't lose their original (legacy) save files
+		private IEnumerator MigrateSaveFilesToV1_2_0()
+		{
+			if( string.IsNullOrEmpty( OutputDirectory ) )
+				yield break;
+
+			HashSet<string> legacySaveFiles = new HashSet<string>( Directory.GetDirectories( OutputDirectory ) );
+			if( legacySaveFiles.Count == 0 )
+				yield break;
+
+			List<string> originalSaveFiles = new List<string>( 32 );
+			List<string> saveFilesToMigrate = new List<string>( 32 );
+			HashSet<string> allUserIDs = new HashSet<string>();
+
+			foreach( string saveFilePath in exploredGameSaveFilePaths )
+			{
+				string legacySaveFile = Path.Combine( OutputDirectory, string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath ) ) );
+				if( Directory.Exists( legacySaveFile ) )
+				{
+					originalSaveFiles.Add( saveFilePath );
+					saveFilesToMigrate.Add( legacySaveFile );
+					legacySaveFiles.Remove( legacySaveFile );
+				}
+			}
+
+			progressbarDialog.Show( "Migrating saves from v1.0.0 to v1.2.0, please wait...", true );
+
+			for( int i = 0; i < originalSaveFiles.Count; i++ )
+			{
+				string saveFileUserID = GetSaveFileUserID( originalSaveFiles[i] );
+				allUserIDs.Add( saveFileUserID );
+
+				CopyDirectoryRecursively( saveFilesToMigrate[i], Path.Combine( Path.Combine( OutputDirectory, saveFileUserID ), string.Concat( Path.GetFileName( saveFilesToMigrate[i] ), "_", DEFAULT_PLAYTHROUGH_NAME ) ) );
+				progressbarDialog.UpdateProgressbar( (float) ( i + 1 ) / ( originalSaveFiles.Count + legacySaveFiles.Count ), string.Concat( ( i + 1 ).ToString(), "/", ( originalSaveFiles.Count + legacySaveFiles.Count ).ToString() ) );
+
+				yield return null;
+			}
+
+			// The remaining save files left in legacySaveFiles belong to the games that were uninstalled along with their Steam save files. These saves may belong to any user, so we should
+			// copy them to all users' folders to be safe
+			if( legacySaveFiles.Count > 0 )
+			{
+				string[] _allUserIDs = new string[allUserIDs.Count];
+				allUserIDs.CopyTo( _allUserIDs );
+
+				int progressbarValue = originalSaveFiles.Count;
+				foreach( string legacySaveFile in legacySaveFiles )
+				{
+					if( !Directory.Exists( Path.Combine( legacySaveFile, MANUAL_SAVES_FOLDER ) ) && !Directory.Exists( Path.Combine( legacySaveFile, AUTOMATED_SAVES_FOLDER ) ) )
+						continue;
+
+					foreach( string userID in _allUserIDs )
+					{
+						CopyDirectoryRecursively( legacySaveFile, Path.Combine( Path.Combine( OutputDirectory, userID ), string.Concat( Path.GetFileName( legacySaveFile ), "_", DEFAULT_PLAYTHROUGH_NAME ) ) );
+						yield return null;
+					}
+
+					progressbarValue++;
+					progressbarDialog.UpdateProgressbar( (float) progressbarValue / ( originalSaveFiles.Count + legacySaveFiles.Count ), string.Concat( progressbarValue.ToString(), "/", ( originalSaveFiles.Count + legacySaveFiles.Count ).ToString() ) );
+				}
+			}
+
+			yield return new WaitForSeconds( 0.5f );
+
+			progressbarDialog.gameObject.SetActive( false );
+
+			MigratedSaveFilesToV1_2_0 = true;
+			LoadSaveFiles();
 		}
 	}
 }

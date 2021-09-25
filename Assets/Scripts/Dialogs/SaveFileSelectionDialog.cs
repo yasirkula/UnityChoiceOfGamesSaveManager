@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -41,7 +40,7 @@ namespace CoGSaveManager
 				bool allUserIDsSame = true;
 				for( int i = 0; i < saveFiles.Length; i++ )
 				{
-					userIDs[i] = new FileInfo( saveFiles[i] ).Directory.Parent.Parent.Name;
+					userIDs[i] = SaveManager.GetSaveFileUserID( saveFiles[i] );
 					if( allUserIDsSame && !string.IsNullOrEmpty( prevUserID ) && prevUserID != userIDs[i] )
 						allUserIDsSame = false;
 					else
