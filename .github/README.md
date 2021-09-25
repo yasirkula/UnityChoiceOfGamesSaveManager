@@ -1,8 +1,8 @@
 # Choice of Games Save Manager
 
-![Screenshot](MainWindow.png)
+![Screenshot](Images/MainWindow.png)
 
-This is a hobby Unity project that helps manage save files for [Choice of Games](https://store.steampowered.com/search/?publisher=Choice%20of%20Games) and [Hosted Games](https://store.steampowered.com/search/?publisher=Hosted%20Games) that are published on **Steam** platform (tested on Windows only). Note that this application **doesn't allow** you to edit your save files, it just allows you to save your progress manually and/or automatically.
+This is a hobby Unity project that helps manage save files for [Choice of Games](https://store.steampowered.com/search/?publisher=Choice%20of%20Games) and [Hosted Games](https://store.steampowered.com/search/?publisher=Hosted%20Games) that are published on **Steam** platform (tested on Windows only).
 
 The project is created with *Unity 5.6.2f1*, so it can be modified on pretty much any Unity version. For convenience, a portable pre-built Windows executable of the application can be found at the [Releases](https://github.com/yasirkula/UnityChoiceOfGamesSaveManager/releases) page.
 
@@ -18,4 +18,13 @@ The project is created with *Unity 5.6.2f1*, so it can be modified on pretty muc
 - **Manual Saves:** You can save the game manually at any time by clicking the **Save** button. To change the save's name, you can either type the name into the input field or click the dropdown button and pick one of the previous manual saves' name
 - **Automated Saves:** The game is automatically saved as you progress through the story (i.e. whenever you progress to the next page of the game). This way, you can undo your latest choices. Maximum number of automated saves can be configured via "**# of Saves**". Once this number is reached, oldest automated saves will be overwritten with the newest automated saves
 - You can load a save by clicking it. For the load operation to work, however, you **must** first close the game and wait a little while for the *Steam Cloud Save* to finish (if enabled). Then, you can load the desired save file and launch the game again
-- To switch between previously explored Choice of Games (without having to change *Game Save Directory* manually at each time), you can click the current game's title ("*- communitycollegehero -*" in the screenshot) and choose the target game from the list
+
+![Screenshot](Images/LoadDialog.png)
+
+- You can edit a save by clicking it. Similar to loading a save, you **must** first close the game and wait a little while for the *Steam Cloud Save* to finish (if enabled). Before editing an important save, you're recommended to backup it as a separate *Manual Save*, just in case
+
+![Screenshot](Images/SaveEditor.png)
+
+- To switch between previously explored Choice of Games (without having to change *Game Save Directory* manually at each time), you can click the current game's title ("*- communitycollegehero -*" in the first screenshot) and choose the target game from the list. Every time this application is launched, it tries to populate this list automatically by checking the contents of the Steam save directory. Thus, you probably won't need to enter *Game Save Directory* manually for a game at all, the game will likely be explored automatically by the application at startup
+
+![Screenshot](Images/GameSelectionDialog.png)

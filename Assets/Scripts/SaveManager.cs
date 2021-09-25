@@ -7,6 +7,7 @@ using UnityEngine.UI;
 
 namespace CoGSaveManager
 {
+	[Serializable]
 	public class CachedSaveFilePaths
 	{
 		public string[] paths;
@@ -38,6 +39,9 @@ namespace CoGSaveManager
 
 		[SerializeField]
 		private Button gameTitleBackgroundButton;
+
+		[SerializeField]
+		private SaveEditorWindow saveEditorWindow;
 
 		[SerializeField]
 		private LoadConfirmationDialog loadConfirmationDialog;
@@ -99,7 +103,7 @@ namespace CoGSaveManager
 						{
 							GameSaveFilePath = selectedSaveFilePath;
 							LoadSaveFiles();
-						} );
+						}, false );
 					}
 
 					PlayerPrefs.SetString( "GamePath", value );
@@ -340,9 +344,16 @@ namespace CoGSaveManager
 
 						// If changing the value of GameSaveDirectory prompted saveFileSelectionDialog, close it because we've assigned GameSaveFilePath's value manually
 						saveFileSelectionDialog.gameObject.SetActive( false );
-					} );
+					}, true );
 				}
 			} );
+
+			saveEditorWindow.OnSaveEntryModified += ( modifiedSaveEntry ) =>
+			{
+				// If the currently active save is edited, reload the save
+				if( modifiedSaveEntry.saveDate == CurrentlyActiveSaveDateTime )
+					LoadGame( modifiedSaveEntry.directory );
+			};
 
 			ManualSaveNameDropdownEntry.OnSelectionChanged = ( saveName ) => ManualSaveName = saveName;
 
@@ -354,33 +365,35 @@ namespace CoGSaveManager
 
 			try
 			{
+				bool exploredGameSaveFilePathsChanged = false;
 				CachedSaveFilePaths cachedSaveFilePaths = JsonUtility.FromJson<CachedSaveFilePaths>( PlayerPrefs.GetString( "CachedSaveFilePaths", "{}" ) );
 				if( cachedSaveFilePaths.paths != null )
+				{
 					exploredGameSaveFilePaths.UnionWith( cachedSaveFilePaths.paths );
+
+					// Remove cached save file paths that no longer exist
+					if( exploredGameSaveFilePaths.RemoveWhere( ( cachedSaveFilePath ) => !File.Exists( cachedSaveFilePath ) ) > 0 )
+						exploredGameSaveFilePathsChanged = true;
+				}
 
 				// Automatically fetch the list of Choice of Games from Steam saves folder at each launch
 				string steamSaveDirectory = GetSteamSavesDirectory();
 				if( !string.IsNullOrEmpty( steamSaveDirectory ) )
 				{
-					string[] steamUsers = Directory.GetDirectories( steamSaveDirectory );
-					if( steamUsers.Length == 1 )
+					foreach( string potentialSaveFilePath in Directory.GetFiles( steamSaveDirectory, "*PSstate", SearchOption.AllDirectories ) )
 					{
-						bool newSaveFilePathExplored = false;
-						foreach( string potentialSaveFilePath in Directory.GetFiles( steamUsers[0], "*PSstate", SearchOption.AllDirectories ) )
-						{
-							if( potentialSaveFilePath.EndsWith( "PSstate" ) && Path.GetFileName( Path.GetDirectoryName( potentialSaveFilePath ) ) == "remote" && exploredGameSaveFilePaths.Add( potentialSaveFilePath ) )
-								newSaveFilePathExplored = true;
-						}
-
-						if( newSaveFilePathExplored )
-						{
-							string[] _exploredGameSaveFilePaths = new string[exploredGameSaveFilePaths.Count];
-							exploredGameSaveFilePaths.CopyTo( _exploredGameSaveFilePaths );
-
-							PlayerPrefs.SetString( "CachedSaveFilePaths", JsonUtility.ToJson( new CachedSaveFilePaths() { paths = _exploredGameSaveFilePaths } ) );
-							PlayerPrefs.Save();
-						}
+						if( potentialSaveFilePath.EndsWith( "PSstate" ) && Path.GetFileName( Path.GetDirectoryName( potentialSaveFilePath ) ) == "remote" && exploredGameSaveFilePaths.Add( potentialSaveFilePath ) )
+							exploredGameSaveFilePathsChanged = true;
 					}
+				}
+
+				if( exploredGameSaveFilePathsChanged )
+				{
+					string[] _exploredGameSaveFilePaths = new string[exploredGameSaveFilePaths.Count];
+					exploredGameSaveFilePaths.CopyTo( _exploredGameSaveFilePaths );
+
+					PlayerPrefs.SetString( "CachedSaveFilePaths", JsonUtility.ToJson( new CachedSaveFilePaths() { paths = _exploredGameSaveFilePaths } ) );
+					PlayerPrefs.Save();
 				}
 			}
 			catch( Exception e )
@@ -551,12 +564,16 @@ namespace CoGSaveManager
 
 		private void OnSaveEntryClicked( SaveEntry saveEntry, bool isAutomatedSave )
 		{
-			loadConfirmationDialog.Show( saveEntry.saveName, () =>
+			loadConfirmationDialog.Show( saveEntry.saveName, () => // onLoad
 			{
 				if( LoadGame( saveEntry.directory ) && !isAutomatedSave )
 					manuallyLoadedGameDateTime = File.GetLastWriteTime( GetSaveFilePath( saveEntry.directory ) );
 			},
-			() =>
+			() => // onEdit
+			{
+				saveEditorWindow.Show( saveEntry, GetSaveFilePath( saveEntry.directory ) );
+			},
+			() => // onDelete
 			{
 				Directory.Delete( saveEntry.directory, true );
 

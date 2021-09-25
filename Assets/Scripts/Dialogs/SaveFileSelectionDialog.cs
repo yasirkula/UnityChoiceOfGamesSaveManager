@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -28,14 +29,36 @@ namespace CoGSaveManager
 			} );
 		}
 
-		public void Show( string[] saveFiles, string currentSaveFile, System.Action<string> onConfirm )
+		public void Show( string[] saveFiles, string currentSaveFile, System.Action<string> onConfirm, bool showUserIDs )
 		{
 			this.saveFiles = saveFiles;
 			this.onConfirm = onConfirm;
 
+			string[] userIDs = showUserIDs ? new string[saveFiles.Length] : null;
+			if( showUserIDs )
+			{
+				string prevUserID = null;
+				bool allUserIDsSame = true;
+				for( int i = 0; i < saveFiles.Length; i++ )
+				{
+					userIDs[i] = new FileInfo( saveFiles[i] ).Directory.Parent.Parent.Name;
+					if( allUserIDsSame && !string.IsNullOrEmpty( prevUserID ) && prevUserID != userIDs[i] )
+						allUserIDsSame = false;
+					else
+						prevUserID = userIDs[i];
+				}
+
+				// Don't show Steam User IDs if all saves belong to the same person (for clarity)
+				if( allUserIDsSame )
+					showUserIDs = false;
+			}
+
 			List<Dropdown.OptionData> _saveFiles = new List<Dropdown.OptionData>( saveFiles.Length );
 			for( int i = 0; i < saveFiles.Length; i++ )
-				_saveFiles.Add( new Dropdown.OptionData( SaveManager.GetReadableSaveFileName( saveFiles[i] ) ) );
+			{
+				string saveFileName = SaveManager.GetReadableSaveFileName( saveFiles[i] );
+				_saveFiles.Add( new Dropdown.OptionData( !showUserIDs ? saveFileName : string.Concat( userIDs[i], "/", saveFileName ) ) );
+			}
 
 			dropdown.options = _saveFiles;
 			dropdown.value = Mathf.Max( 0, System.Array.IndexOf( saveFiles, currentSaveFile ) );

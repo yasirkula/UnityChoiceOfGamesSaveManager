@@ -1,3 +1,4 @@
 = CC0 1.0 Universal License =
 
 Icon.psd: https://brandeps.com/icon/S/Save-06
+EditIcon.png: https://www.svgrepo.com/svg/42233/pencil-edit-button

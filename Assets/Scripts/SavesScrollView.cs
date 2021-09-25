@@ -178,7 +178,6 @@ namespace CoGSaveManager
 			else
 			{
 				saveVisual = (SaveEntryVisual) Instantiate( saveVisualPrefab, contentTransform, false );
-				saveVisual.transform.SetParent( contentTransform, false );
 				saveVisual.listView = this;
 			}
 
