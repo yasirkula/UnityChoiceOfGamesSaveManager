@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 using UnityEngine.UI;
 
 namespace CoGSaveManager
@@ -14,6 +15,20 @@ namespace CoGSaveManager
 		public string[] paths;
 	}
 
+	[Serializable]
+	public class RemoteData
+	{
+		public RemoteGameData[] RemoteGameData;
+	}
+
+	[Serializable]
+	public class RemoteGameData
+	{
+		public string GameID;
+		public string SaveFileName;
+		public string ReadableName;
+	}
+
 	public class SaveManager : MonoBehaviour
 	{
 		public const string DEFAULT_PLAYTHROUGH_NAME = "Default";
@@ -22,12 +37,17 @@ namespace CoGSaveManager
 		private const string MANUAL_SAVES_FOLDER = "ManualSaves";
 		private const string AUTOMATED_SAVES_FOLDER = "AutomatedSaves";
 
+		private const string SETTINGS_FILE = "Settings.json";
+
 		private const string GAME_TITLE_FORMAT = "- {0} ({1}) -";
 
 #pragma warning disable 0649
 		[SerializeField]
 		private float saveCheckInterval = 0.1f;
 		private float nextAutomatedSaveCheckTime;
+
+		[SerializeField]
+		private Settings settings;
 
 		[SerializeField]
 		private InputField gameSaveDirectoryInputField, outputDirectoryInputField, manualSaveNameInputField, numberOfAutomatedSavesInputField;
@@ -86,7 +106,7 @@ namespace CoGSaveManager
 						m_gameSaveFilePath = "";
 
 					currentPlaythrough = string.IsNullOrEmpty( m_gameSaveFilePath ) ? DEFAULT_PLAYTHROUGH_NAME : GetAllPlaythroughs( m_gameSaveFilePath )[0];
-					gameTitleText.text = string.IsNullOrEmpty( m_gameSaveFilePath ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( m_gameSaveFilePath ), currentPlaythrough );
+					RefreshGameTitle();
 				}
 
 				return m_gameSaveFilePath;
@@ -105,6 +125,9 @@ namespace CoGSaveManager
 					{
 						gameSaveDirectoryInputField.text = gameSaveDirectory;
 						gameSaveDirectoryBackground.color = gameSaveDirectoryValidColor;
+
+						// Even if Steam isn't located at a pre-defined location, we can figure out its location by looking at GameSaveFilePath
+						SteamSavesDirectory = new DirectoryInfo( gameSaveDirectory ).Parent.Parent.FullName;
 					}
 					else
 					{
@@ -116,7 +139,7 @@ namespace CoGSaveManager
 					if( string.IsNullOrEmpty( currentPlaythrough ) )
 						currentPlaythrough = GetAllPlaythroughs( value )[0];
 
-					gameTitleText.text = string.IsNullOrEmpty( value ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( value ), currentPlaythrough );
+					RefreshGameTitle();
 
 					PlayerPrefs.SetString( "GameSaveFilePath", value );
 					PlayerPrefs.Save();
@@ -159,6 +182,55 @@ namespace CoGSaveManager
 					PlayerPrefs.Save();
 
 					LoadSaveFiles();
+				}
+			}
+		}
+
+		private string m_steamSavesDirectory;
+		private string SteamSavesDirectory
+		{
+			get
+			{
+				if( m_steamSavesDirectory == null )
+				{
+					m_steamSavesDirectory = PlayerPrefs.GetString( "SteamSavesPath", "" );
+					if( !string.IsNullOrEmpty( m_steamSavesDirectory ) && !Directory.Exists( m_steamSavesDirectory ) )
+						m_steamSavesDirectory = "";
+
+					if( string.IsNullOrEmpty( m_steamSavesDirectory ) )
+					{
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+						for( int i = 0; i < 3; i++ )
+						{
+							string potentialDirectory = string.Format( @"{0}:\Program Files (x86)\Steam\userdata", (char) ( 'C' + i ) );
+							if( Directory.Exists( potentialDirectory ) )
+							{
+								m_steamSavesDirectory = potentialDirectory;
+								break;
+							}
+						}
+#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+						string potentialDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.Personal ), "Library/Application Support/Steam/userdata" );
+						if( Directory.Exists( potentialDirectory ) )
+							m_steamSavesDirectory = potentialDirectory;
+#elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
+						string potentialDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.Personal ), ".local/share/Steam/userdata" );
+						if( Directory.Exists( potentialDirectory ) )
+							m_steamSavesDirectory = potentialDirectory;
+#endif
+					}
+				}
+
+				return m_steamSavesDirectory;
+			}
+			set
+			{
+				if( m_steamSavesDirectory != value && !string.IsNullOrEmpty( value ) )
+				{
+					m_steamSavesDirectory = value;
+
+					PlayerPrefs.SetString( "SteamSavesPath", value );
+					PlayerPrefs.Save();
 				}
 			}
 		}
@@ -230,8 +302,30 @@ namespace CoGSaveManager
 
 		private readonly HashSet<string> exploredGameSaveFilePaths = new HashSet<string>();
 
+		private static readonly Dictionary<string, List<RemoteGameData>> remoteGameDataLookup = new Dictionary<string, List<RemoteGameData>>( 128 );
+
 		private void Awake()
 		{
+			// Overwrite settings using local settings file (if exists)
+			try
+			{
+				if( File.Exists( SETTINGS_FILE ) )
+					JsonUtility.FromJsonOverwrite( File.ReadAllText( SETTINGS_FILE ), settings );
+			}
+			catch( Exception e )
+			{
+				Debug.LogException( e );
+			}
+
+			try
+			{
+				StartCoroutine( FetchRemoteGameDataAsync() );
+			}
+			catch( Exception e )
+			{
+				Debug.LogException( e );
+			}
+
 			gameSaveDirectoryBackground = gameSaveDirectoryInputField.GetComponent<Image>();
 			gameSaveDirectoryValidColor = gameSaveDirectoryBackground.color;
 
@@ -305,11 +399,10 @@ namespace CoGSaveManager
 					initialPath = Path.GetDirectoryName( gameSaveDirectory );
 				else
 				{
-					string steamSaveDirectory = GetSteamSavesDirectory();
-					if( !string.IsNullOrEmpty( steamSaveDirectory ) )
+					if( !string.IsNullOrEmpty( SteamSavesDirectory ) )
 					{
-						string[] steamUsers = Directory.GetDirectories( steamSaveDirectory );
-						initialPath = ( steamUsers.Length == 1 ) ? steamUsers[0] : steamSaveDirectory;
+						string[] steamUsers = Directory.GetDirectories( SteamSavesDirectory );
+						initialPath = ( steamUsers.Length == 1 ) ? steamUsers[0] : SteamSavesDirectory;
 					}
 				}
 
@@ -337,7 +430,7 @@ namespace CoGSaveManager
 							currentPlaythrough = "";
 							GameSaveFilePath = selectedSaveFilePath;
 							LoadSaveFiles();
-						}, false );
+						}, false, settings.IgnoreArticlesWhileSortingGames );
 					}
 
 					LoadSaveFiles();
@@ -366,7 +459,6 @@ namespace CoGSaveManager
 				{
 					string[] _exploredGameSaveFilePaths = new string[exploredGameSaveFilePaths.Count];
 					exploredGameSaveFilePaths.CopyTo( _exploredGameSaveFilePaths );
-					Array.Sort( _exploredGameSaveFilePaths, ( path1, path2 ) => Path.GetFileName( path1 ).CompareTo( Path.GetFileName( path2 ) ) );
 
 					switchGameDialog.Show( _exploredGameSaveFilePaths, GameSaveFilePath, ( selectedSaveFilePath, selectedPlaythrough ) => // onConfirm
 					{
@@ -375,7 +467,7 @@ namespace CoGSaveManager
 						if( GameSaveFilePath != selectedSaveFilePath )
 							GameSaveFilePath = selectedSaveFilePath;
 						else if( !string.IsNullOrEmpty( selectedSaveFilePath ) ) // If GameSaveFilePath didn't change, we should still update gameTitleText with the new playthrough
-							gameTitleText.text = string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( selectedSaveFilePath ), currentPlaythrough );
+							RefreshGameTitle();
 
 						LoadSaveFiles();
 
@@ -386,7 +478,7 @@ namespace CoGSaveManager
 					{
 						if( !string.IsNullOrEmpty( OutputDirectory ) && !string.IsNullOrEmpty( saveFile ) && File.Exists( saveFile ) )
 						{
-							string playthroughDirectory = Path.Combine( Path.Combine( OutputDirectory, GetSaveFileUserID( saveFile ) ), string.Concat( new FileInfo( saveFile ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFile ), "_", playthrough ) );
+							string playthroughDirectory = Path.Combine( Path.Combine( OutputDirectory, GetSaveFileUserID( saveFile ) ), string.Concat( new FileInfo( saveFile ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFile, false ), "_", playthrough ) );
 							if( Directory.Exists( playthroughDirectory ) )
 								Directory.Delete( playthroughDirectory, true );
 
@@ -394,12 +486,12 @@ namespace CoGSaveManager
 							if( saveFile == GameSaveFilePath && playthrough == currentPlaythrough )
 							{
 								currentPlaythrough = GetAllPlaythroughs( GameSaveFilePath )[0];
-								gameTitleText.text = string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( GameSaveFilePath ), currentPlaythrough );
 
+								RefreshGameTitle();
 								LoadSaveFiles();
 							}
 						}
-					}, true );
+					}, true, settings.IgnoreArticlesWhileSortingGames );
 				}
 			} );
 
@@ -432,10 +524,9 @@ namespace CoGSaveManager
 				}
 
 				// Automatically fetch the list of Choice of Games from Steam saves folder at each launch
-				string steamSaveDirectory = GetSteamSavesDirectory();
-				if( !string.IsNullOrEmpty( steamSaveDirectory ) )
+				if( !string.IsNullOrEmpty( SteamSavesDirectory ) )
 				{
-					foreach( string potentialSaveFilePath in Directory.GetFiles( steamSaveDirectory, "*PSstate", SearchOption.AllDirectories ) )
+					foreach( string potentialSaveFilePath in Directory.GetFiles( SteamSavesDirectory, "*PSstate", SearchOption.AllDirectories ) )
 					{
 						if( potentialSaveFilePath.EndsWith( "PSstate" ) && Path.GetFileName( Path.GetDirectoryName( potentialSaveFilePath ) ) == "remote" && exploredGameSaveFilePaths.Add( potentialSaveFilePath ) )
 							exploredGameSaveFilePathsChanged = true;
@@ -507,7 +598,7 @@ namespace CoGSaveManager
 			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
 			{
 				string playthrough = string.IsNullOrEmpty( currentPlaythrough ) ? DEFAULT_PLAYTHROUGH_NAME : currentPlaythrough;
-				string rootDirectory = Path.Combine( Path.Combine( OutputDirectory, GetSaveFileUserID( GameSaveFilePath ) ), string.Concat( Path.GetFileName( gameSaveDirectory ), "_", GetReadableSaveFileName( GameSaveFilePath ), "_", playthrough ) );
+				string rootDirectory = Path.Combine( Path.Combine( OutputDirectory, GetSaveFileUserID( GameSaveFilePath ) ), string.Concat( Path.GetFileName( gameSaveDirectory ), "_", GetReadableSaveFileName( GameSaveFilePath, false ), "_", playthrough ) );
 				manualSavesDirectory = Path.Combine( rootDirectory, MANUAL_SAVES_FOLDER );
 				automatedSavesDirectory = Path.Combine( rootDirectory, AUTOMATED_SAVES_FOLDER );
 
@@ -735,7 +826,7 @@ namespace CoGSaveManager
 				string rootDirectory = Path.Combine( OutputDirectory, GetSaveFileUserID( saveFilePath ) );
 				if( Directory.Exists( rootDirectory ) )
 				{
-					string saveDirectoryPrefix = string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath ), "_" );
+					string saveDirectoryPrefix = string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath, false ), "_" );
 
 					string[] allPlaythroughs = Directory.GetDirectories( rootDirectory, saveDirectoryPrefix + "*", SearchOption.TopDirectoryOnly );
 					if( allPlaythroughs.Length == 1 )
@@ -768,40 +859,120 @@ namespace CoGSaveManager
 			return new string[1] { DEFAULT_PLAYTHROUGH_NAME };
 		}
 
-		private string GetSteamSavesDirectory()
+		public static string GetReadableSaveFileName( string saveFilePath, bool humanReadable )
 		{
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
-			for( int i = 0; i < 3; i++ )
+			if( !humanReadable )
+				return GetReadableSaveFileNameInternal( Path.GetFileName( saveFilePath ) );
+			else
 			{
-				string steamSaveDirectory = string.Format( @"{0}:\Program Files (x86)\Steam\userdata", (char) ( 'C' + i ) );
-				if( Directory.Exists( steamSaveDirectory ) )
-					return steamSaveDirectory;
+				FileInfo saveFile = new FileInfo( saveFilePath );
+				RemoteGameData gameData = GetRemoteGameData( saveFile );
+				return ( gameData != null && !string.IsNullOrEmpty( gameData.ReadableName ) ) ? gameData.ReadableName : GetReadableSaveFileNameInternal( saveFile.Name );
 			}
-#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
-			string steamSaveDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.Personal ), "Library/Application Support/Steam/userdata" );
-			if( Directory.Exists( steamSaveDirectory ) )
-				return steamSaveDirectory;
-#elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
-			string steamSaveDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.Personal ), ".local/share/Steam/userdata" );
-			if( Directory.Exists( steamSaveDirectory ) )
-				return steamSaveDirectory;
-#endif
-
-			return "";
 		}
 
-		public static string GetReadableSaveFileName( string saveFilePath )
+		private static string GetReadableSaveFileNameInternal( string saveFileName )
 		{
-			string filename = Path.GetFileName( saveFilePath );
-			if( filename.StartsWith( "storePS" ) )
-				return filename.Substring( "storePS".Length, filename.Length - "storePS".Length - "PSstate".Length );
+			if( saveFileName.StartsWith( "storePS" ) )
+				return saveFileName.Substring( "storePS".Length, saveFileName.Length - "storePS".Length - "PSstate".Length );
 			else
-				return filename.Substring( 0, filename.Length - "PSstate".Length );
+				return saveFileName.Substring( 0, saveFileName.Length - "PSstate".Length );
 		}
 
 		public static string GetSaveFileUserID( string saveFilePath )
 		{
 			return new FileInfo( saveFilePath ).Directory.Parent.Parent.Name;
+		}
+
+		private static RemoteGameData GetRemoteGameData( string saveFilePath )
+		{
+			return GetRemoteGameData( new FileInfo( saveFilePath ) );
+		}
+
+		private static RemoteGameData GetRemoteGameData( FileInfo saveFile )
+		{
+			List<RemoteGameData> matchingGameData;
+			if( remoteGameDataLookup.TryGetValue( saveFile.Directory.Parent.Name, out matchingGameData ) )
+			{
+				string saveFileName = saveFile.Name;
+				for( int i = 0; i < matchingGameData.Count; i++ )
+				{
+					if( matchingGameData[i].SaveFileName == saveFileName )
+						return matchingGameData[i];
+				}
+			}
+
+			return null;
+		}
+
+		private void RefreshGameTitle()
+		{
+			gameTitleText.text = string.IsNullOrEmpty( GameSaveFilePath ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( GameSaveFilePath, true ), currentPlaythrough );
+		}
+
+		private IEnumerator FetchRemoteGameDataAsync()
+		{
+			if( string.IsNullOrEmpty( settings.RemoteGameDataURL ) )
+				yield break;
+
+			// Load cached remote data (if exists) while fetching the up-to-date remote data from the server
+			string cacheFilePath = Path.Combine( Application.temporaryCachePath, "CoGRemoteGameData.json" );
+			if( File.Exists( cacheFilePath ) )
+			{
+				try
+				{
+					InitializeRemoteData( JsonUtility.FromJson<RemoteData>( File.ReadAllText( cacheFilePath ) ) );
+				}
+				catch { }
+			}
+
+			UnityWebRequest remoteGameDataFetch = UnityWebRequest.Get( settings.RemoteGameDataURL );
+			yield return remoteGameDataFetch.Send();
+
+			if( remoteGameDataFetch.isError )
+				Debug.LogWarning( remoteGameDataFetch.error );
+			else
+			{
+				try
+				{
+					string returnedJson = remoteGameDataFetch.downloadHandler.text;
+					InitializeRemoteData( JsonUtility.FromJson<RemoteData>( returnedJson ) );
+
+					// Cache the fetched data for the next session
+					File.WriteAllText( cacheFilePath, returnedJson );
+
+					// Refresh the title (its human-readable name may have changed)
+					if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
+						RefreshGameTitle();
+				}
+				catch( ArgumentException e ) // JSON parse errors, I don't think we should show the error popup for these
+				{
+					Debug.LogWarning( e.ToString() );
+				}
+			}
+		}
+
+		private void InitializeRemoteData( RemoteData data )
+		{
+			remoteGameDataLookup.Clear();
+
+			if( data == null )
+				return;
+
+			if( data.RemoteGameData != null )
+			{
+				foreach( RemoteGameData remoteGameData in data.RemoteGameData )
+				{
+					if( !string.IsNullOrEmpty( remoteGameData.SaveFileName ) )
+						remoteGameData.SaveFileName = string.Concat( "storePS", remoteGameData.SaveFileName, "PSstate" );
+
+					List<RemoteGameData> matchingGameData;
+					if( !remoteGameDataLookup.TryGetValue( remoteGameData.GameID, out matchingGameData ) )
+						remoteGameDataLookup[remoteGameData.GameID] = matchingGameData = new List<RemoteGameData>( 2 );
+
+					matchingGameData.Add( remoteGameData );
+				}
+			}
 		}
 
 		private void CopyDirectoryRecursively( string sourceDirectory, string destinationDirectory )
@@ -853,7 +1024,7 @@ namespace CoGSaveManager
 
 			foreach( string saveFilePath in exploredGameSaveFilePaths )
 			{
-				string legacySaveFile = Path.Combine( OutputDirectory, string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath ) ) );
+				string legacySaveFile = Path.Combine( OutputDirectory, string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath, false ) ) );
 				if( Directory.Exists( legacySaveFile ) )
 				{
 					originalSaveFiles.Add( saveFilePath );

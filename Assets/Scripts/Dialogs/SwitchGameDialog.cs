@@ -56,7 +56,7 @@ namespace CoGSaveManager
 			cancelButton.onClick.AddListener( () => gameObject.SetActive( false ) );
 		}
 
-		public void Show( string[] saveFiles, string currentSaveFile, System.Action<string, string> onConfirm, System.Action<string, string> onDeletePlaythrough, bool showUserIDs )
+		public void Show( string[] saveFiles, string currentSaveFile, System.Action<string, string> onConfirm, System.Action<string, string> onDeletePlaythrough, bool showUserIDs, bool ignoreArticlesWhileSorting )
 		{
 			this.onDeletePlaythrough = onDeletePlaythrough;
 
@@ -66,7 +66,7 @@ namespace CoGSaveManager
 			{
 				if( onConfirm != null )
 					onConfirm( selectedSaveFilePath, playthroughNameValidator( playthroughInputField.text ) );
-			}, showUserIDs );
+			}, showUserIDs, ignoreArticlesWhileSorting );
 
 			dropdown.onValueChanged.AddListener( ( value ) => RefreshPlaythroughs( saveFiles[value] ) );
 

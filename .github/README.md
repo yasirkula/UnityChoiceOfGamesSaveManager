@@ -1,4 +1,4 @@
-# Choice of Games Save Manager
+# Choice of Games Save Manager for Steam (Unofficial)
 
 ![Screenshot](Images/MainWindow.png)
 

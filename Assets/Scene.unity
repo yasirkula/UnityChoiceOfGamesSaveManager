@@ -505,9 +505,9 @@ MonoBehaviour:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     m_FontSize: 25
     m_FontStyle: 0
-    m_BestFit: 0
-    m_MinSize: 2
-    m_MaxSize: 40
+    m_BestFit: 1
+    m_MinSize: 10
+    m_MaxSize: 25
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -9502,6 +9502,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   saveCheckInterval: 0.1
+  settings: {fileID: 11400000, guid: eb4171e718bdaff42801485e9715ef27, type: 2}
   gameSaveDirectoryInputField: {fileID: 826576703}
   outputDirectoryInputField: {fileID: 1492857200}
   manualSaveNameInputField: {fileID: 872434363}

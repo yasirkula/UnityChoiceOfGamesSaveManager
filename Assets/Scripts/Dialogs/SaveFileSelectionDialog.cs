@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,6 +7,38 @@ namespace CoGSaveManager
 {
 	public class SaveFileSelectionDialog : MonoBehaviour
 	{
+		private class GameNameComparer : IComparer<string>
+		{
+			private readonly bool ignoreArticlesWhileSorting;
+
+			public GameNameComparer( bool ignoreArticlesWhileSorting )
+			{
+				this.ignoreArticlesWhileSorting = ignoreArticlesWhileSorting;
+			}
+
+			public int Compare( string x, string y )
+			{
+				if( ignoreArticlesWhileSorting )
+				{
+					if( x.StartsWith( "The ", StringComparison.OrdinalIgnoreCase ) )
+						x = x.Substring( 4 );
+					if( x.StartsWith( "A ", StringComparison.OrdinalIgnoreCase ) )
+						x = x.Substring( 2 );
+					if( x.StartsWith( "An ", StringComparison.OrdinalIgnoreCase ) )
+						x = x.Substring( 3 );
+
+					if( y.StartsWith( "The ", StringComparison.OrdinalIgnoreCase ) )
+						y = y.Substring( 4 );
+					if( y.StartsWith( "A ", StringComparison.OrdinalIgnoreCase ) )
+						y = y.Substring( 2 );
+					if( y.StartsWith( "An ", StringComparison.OrdinalIgnoreCase ) )
+						y = y.Substring( 3 );
+				}
+
+				return x.CompareTo( y );
+			}
+		}
+
 #pragma warning disable 0649
 		[SerializeField]
 		protected Dropdown dropdown;
@@ -15,7 +48,7 @@ namespace CoGSaveManager
 #pragma warning restore 0649
 
 		private string[] saveFiles;
-		private System.Action<string> onConfirm;
+		private Action<string> onConfirm;
 
 		protected virtual void Awake()
 		{
@@ -28,7 +61,7 @@ namespace CoGSaveManager
 			} );
 		}
 
-		public void Show( string[] saveFiles, string currentSaveFile, System.Action<string> onConfirm, bool showUserIDs )
+		public void Show( string[] saveFiles, string currentSaveFile, Action<string> onConfirm, bool showUserIDs, bool ignoreArticlesWhileSorting )
 		{
 			this.saveFiles = saveFiles;
 			this.onConfirm = onConfirm;
@@ -52,15 +85,19 @@ namespace CoGSaveManager
 					showUserIDs = false;
 			}
 
+			string[] saveFileNames = new string[saveFiles.Length];
+			for( int i = 0; i < saveFiles.Length; i++ )
+				saveFileNames[i] = SaveManager.GetReadableSaveFileName( saveFiles[i], true );
+
+			// Sort save files by their readable names
+			Array.Sort( saveFileNames, saveFiles, new GameNameComparer( ignoreArticlesWhileSorting ) );
+
 			List<Dropdown.OptionData> _saveFiles = new List<Dropdown.OptionData>( saveFiles.Length );
 			for( int i = 0; i < saveFiles.Length; i++ )
-			{
-				string saveFileName = SaveManager.GetReadableSaveFileName( saveFiles[i] );
-				_saveFiles.Add( new Dropdown.OptionData( !showUserIDs ? saveFileName : string.Concat( userIDs[i], "/", saveFileName ) ) );
-			}
+				_saveFiles.Add( new Dropdown.OptionData( !showUserIDs ? saveFileNames[i] : string.Concat( userIDs[i], "/", saveFileNames[i] ) ) );
 
 			dropdown.options = _saveFiles;
-			dropdown.value = Mathf.Max( 0, System.Array.IndexOf( saveFiles, currentSaveFile ) );
+			dropdown.value = Mathf.Max( 0, Array.IndexOf( saveFiles, currentSaveFile ) );
 
 			gameObject.SetActive( true );
 		}
