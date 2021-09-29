@@ -733,32 +733,35 @@ namespace CoGSaveManager
 			if( !string.IsNullOrEmpty( OutputDirectory ) && !string.IsNullOrEmpty( saveFilePath ) && Directory.Exists( OutputDirectory ) && File.Exists( saveFilePath ) )
 			{
 				string rootDirectory = Path.Combine( OutputDirectory, GetSaveFileUserID( saveFilePath ) );
-				string saveDirectoryPrefix = string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath ), "_" );
-
-				string[] allPlaythroughs = Directory.GetDirectories( rootDirectory, saveDirectoryPrefix + "*", SearchOption.TopDirectoryOnly );
-				if( allPlaythroughs.Length == 1 )
-					return new string[1] { Path.GetFileName( allPlaythroughs[0] ).Substring( saveDirectoryPrefix.Length ) };
-				else if( allPlaythroughs.Length > 1 )
+				if( Directory.Exists( rootDirectory ) )
 				{
-					DateTime[] playthroughTimestamps = new DateTime[allPlaythroughs.Length];
-					for( int i = 0; i < allPlaythroughs.Length; i++ )
+					string saveDirectoryPrefix = string.Concat( new FileInfo( saveFilePath ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFilePath ), "_" );
+
+					string[] allPlaythroughs = Directory.GetDirectories( rootDirectory, saveDirectoryPrefix + "*", SearchOption.TopDirectoryOnly );
+					if( allPlaythroughs.Length == 1 )
+						return new string[1] { Path.GetFileName( allPlaythroughs[0] ).Substring( saveDirectoryPrefix.Length ) };
+					else if( allPlaythroughs.Length > 1 )
 					{
-						FileInfo timestampFile = new FileInfo( Path.Combine( allPlaythroughs[i], PLAYTHROUGH_TIMESTAMP_FILE ) );
-						if( timestampFile.Exists )
-							playthroughTimestamps[i] = timestampFile.LastWriteTime;
-						else
-							playthroughTimestamps[i] = new DateTime();
+						DateTime[] playthroughTimestamps = new DateTime[allPlaythroughs.Length];
+						for( int i = 0; i < allPlaythroughs.Length; i++ )
+						{
+							FileInfo timestampFile = new FileInfo( Path.Combine( allPlaythroughs[i], PLAYTHROUGH_TIMESTAMP_FILE ) );
+							if( timestampFile.Exists )
+								playthroughTimestamps[i] = timestampFile.LastWriteTime;
+							else
+								playthroughTimestamps[i] = new DateTime();
+						}
+
+						// Sort playthroughs using their timestamps in descending order (most recently modified playthrough comes first)
+						Array.Sort( playthroughTimestamps, allPlaythroughs );
+						Array.Reverse( allPlaythroughs );
+
+						string[] result = new string[allPlaythroughs.Length];
+						for( int i = 0; i < allPlaythroughs.Length; i++ )
+							result[i] = Path.GetFileName( allPlaythroughs[i] ).Substring( saveDirectoryPrefix.Length );
+
+						return result;
 					}
-
-					// Sort playthroughs using their timestamps in descending order (most recently modified playthrough comes first)
-					Array.Sort( playthroughTimestamps, allPlaythroughs );
-					Array.Reverse( allPlaythroughs );
-
-					string[] result = new string[allPlaythroughs.Length];
-					for( int i = 0; i < allPlaythroughs.Length; i++ )
-						result[i] = Path.GetFileName( allPlaythroughs[i] ).Substring( saveDirectoryPrefix.Length );
-
-					return result;
 				}
 			}
 
