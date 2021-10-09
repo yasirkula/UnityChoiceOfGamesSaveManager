@@ -1,9 +1,34 @@
 {
 "RemoteGameData": [
 {
+	"GameID": "1282650",
+	"SaveFileName": "aegisproject180files",
+	"ReadableName": "180 Files: The Aegis Project"
+},
+{
+	"GameID": "466430",
+	"SaveFileName": "alexandria",
+	"ReadableName": "Choice of Alexandria"
+},
+{
+	"GameID": "1090030",
+	"SaveFileName": "asteroidrun",
+	"ReadableName": "Asteroid Run: No Questions Asked"
+},
+{
 	"GameID": "1663950",
 	"SaveFileName": "battlemage",
 	"ReadableName": "Battlemage: Magic by Mail"
+},
+{
+	"GameID": "757080",
+	"SaveFileName": "broadway",
+	"ReadableName": "Broadway: 1849"
+},
+{
+	"GameID": "386520",
+	"SaveFileName": "championofthegods",
+	"ReadableName": "Champion of the Gods"
 },
 {
 	"GameID": "423120",
@@ -16,6 +41,26 @@
 	"ReadableName": "Community College Hero: Knowledge is Power"
 },
 {
+	"GameID": "633600",
+	"SaveFileName": "creatures",
+	"ReadableName": "Creatures Such as We"
+},
+{
+	"GameID": "1171820",
+	"SaveFileName": "cremedlc",
+	"ReadableName": "Creme de la Creme"
+},
+{
+	"GameID": "318310",
+	"SaveFileName": "deathless",
+	"ReadableName": "Choice of the Deathless"
+},
+{
+	"GameID": "557700",
+	"SaveFileName": "empyrean",
+	"ReadableName": "Empyrean"
+},
+{
 	"GameID": "565980",
 	"SaveFileName": "evertreeinn",
 	"ReadableName": "Evertree Inn"
@@ -26,9 +71,19 @@
 	"ReadableName": "Fallen Hero: Rebirth"
 },
 {
+	"GameID": "1332570",
+	"SaveFileName": "floatingcity",
+	"ReadableName": "The Floating City"
+},
+{
 	"GameID": "1166600",
 	"SaveFileName": "fogknows",
 	"ReadableName": "The Fog Knows Your Name"
+},
+{
+	"GameID": "1110030",
+	"SaveFileName": "heroesofmyth",
+	"ReadableName": "Heroes of Myth"
 },
 {
 	"GameID": "299540",
@@ -49,6 +104,11 @@
 	"GameID": "1775500",
 	"SaveFileName": "interstellarairgap",
 	"ReadableName": "Interstellar Airgap"
+},
+{
+	"GameID": "1171840",
+	"SaveFileName": "ironheart",
+	"ReadableName": "Ironheart"
 },
 {
 	"GameID": "1552430",
@@ -81,6 +141,31 @@
 	"ReadableName": "Lux, City of Secrets"
 },
 {
+	"GameID": "918380",
+	"SaveFileName": "magics",
+	"ReadableName": "Choice of Magics"
+},
+{
+	"GameID": "318330",
+	"SaveFileName": "mechaace",
+	"ReadableName": "Mecha Ace"
+},
+{
+	"GameID": "426330",
+	"SaveFileName": "metahuman",
+	"ReadableName": "MetaHuman Inc."
+},
+{
+	"GameID": "1188800",
+	"SaveFileName": "mrsclaus",
+	"ReadableName": "In the Service of Mrs. Claus"
+},
+{
+	"GameID": "1290270",
+	"SaveFileName": "nightroad",
+	"ReadableName": "Vampire: The Masquerade — Night Road"
+},
+{
 	"GameID": "929020",
 	"SaveFileName": "nuclearpoweredtoaster",
 	"ReadableName": "Nuclear Powered Toaster"
@@ -96,14 +181,34 @@
 	"ReadableName": "The Parenting Simulator"
 },
 {
+	"GameID": "339350",
+	"SaveFileName": "robots",
+	"ReadableName": "Choice of Robots"
+},
+{
 	"GameID": "446310",
 	"SaveFileName": "sabresofinfinity",
 	"ReadableName": "Sabres of Infinity"
 },
 {
+	"GameID": "552720",
+	"SaveFileName": "sagaofthenorthwind",
+	"ReadableName": "Saga of the North Wind"
+},
+{
+	"GameID": "524540",
+	"SaveFileName": "samuraiofhyuga",
+	"ReadableName": "Samurai of Hyuga"
+},
+{
 	"GameID": "839940",
 	"SaveFileName": "silverworld",
 	"ReadableName": "Silverworld"
+},
+{
+	"GameID": "428040",
+	"SaveFileName": "sixthgradedetective",
+	"ReadableName": "Sixth Grade Detective"
 },
 {
 	"GameID": "1029130",
@@ -116,9 +221,19 @@
 	"ReadableName": "The Soul Stone War"
 },
 {
+	"GameID": "421630",
+	"SaveFileName": "studyinsteampunk",
+	"ReadableName": "A Study in Steampunk: Choice by Gaslight"
+},
+{
 	"GameID": "763930",
 	"SaveFileName": "tallyho",
 	"ReadableName": "Tally Ho"
+},
+{
+	"GameID": "375130",
+	"SaveFileName": "tinstar",
+	"ReadableName": "Tin Star"
 },
 {
 	"GameID": "1515420",
