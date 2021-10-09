@@ -46,6 +46,11 @@
 	"ReadableName": "Heroes Rise: The Hero Project"
 },
 {
+	"GameID": "1775500",
+	"SaveFileName": "interstellarairgap",
+	"ReadableName": "Interstellar Airgap"
+},
+{
 	"GameID": "1552430",
 	"SaveFileName": "keeperotdan",
 	"ReadableName": "Keeper of the Day and Night"
