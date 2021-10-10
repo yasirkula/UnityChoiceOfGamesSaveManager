@@ -6,6 +6,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using Version = System.Version;
 
 namespace CoGSaveManager
 {
@@ -87,6 +88,9 @@ namespace CoGSaveManager
 
 		[SerializeField]
 		private ProgressbarDialog progressbarDialog;
+
+		[SerializeField]
+		private NewVersionDialog newVersionDialog;
 
 		[SerializeField]
 		private Color gameSaveDirectoryInvalidColor;
@@ -281,6 +285,16 @@ namespace CoGSaveManager
 			}
 		}
 
+		private string IgnoredNewVersion
+		{
+			get { return PlayerPrefs.GetString( "IgnoredVersion" ); }
+			set
+			{
+				PlayerPrefs.SetString( "IgnoredVersion", value );
+				PlayerPrefs.Save();
+			}
+		}
+
 		private bool MigratedSaveFilesToV1_2_0
 		{
 			get { return PlayerPrefs.GetInt( "SaveMigration1_2_0", 0 ) == 1; }
@@ -311,6 +325,15 @@ namespace CoGSaveManager
 			{
 				if( File.Exists( SETTINGS_FILE ) )
 					JsonUtility.FromJsonOverwrite( File.ReadAllText( SETTINGS_FILE ), settings );
+			}
+			catch( Exception e )
+			{
+				Debug.LogException( e );
+			}
+
+			try
+			{
+				StartCoroutine( CheckForUpdatesAsync() );
 			}
 			catch( Exception e )
 			{
@@ -908,6 +931,39 @@ namespace CoGSaveManager
 		private void RefreshGameTitle()
 		{
 			gameTitleText.text = string.IsNullOrEmpty( GameSaveFilePath ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( GameSaveFilePath, true ), currentPlaythrough );
+		}
+
+		private IEnumerator CheckForUpdatesAsync()
+		{
+			UnityWebRequest webRequest = UnityWebRequest.Get( "https://api.github.com/repos/yasirkula/UnityChoiceOfGamesSaveManager/releases/latest" );
+			yield return webRequest.Send();
+
+			if( webRequest.isError )
+				Debug.LogWarning( webRequest.error );
+			else
+			{
+				const string VERSION_FIELD = "\"tag_name\"";
+
+				string returnedJson = webRequest.downloadHandler.text;
+				int versionNumberStartIndex = returnedJson.IndexOf( VERSION_FIELD );
+				if( versionNumberStartIndex >= 0 )
+				{
+					// Read the up-to-date version from the returned JSON
+					versionNumberStartIndex = returnedJson.IndexOf( '"', versionNumberStartIndex + VERSION_FIELD.Length );
+					int versionNumberEndIndex = returnedJson.IndexOf( '"', versionNumberStartIndex + 1 );
+					string upToDateVersion = returnedJson.Substring( versionNumberStartIndex + 1, versionNumberEndIndex - versionNumberStartIndex - 1 );
+					if( upToDateVersion.StartsWith( "v", StringComparison.OrdinalIgnoreCase ) )
+						upToDateVersion = upToDateVersion.Substring( 1 );
+
+					// Check if this version is outdated
+					if( upToDateVersion != IgnoredNewVersion && new Version( upToDateVersion ) > new Version( Application.version ) )
+					{
+						newVersionDialog.Show( upToDateVersion,
+							() => Application.OpenURL( "https://github.com/yasirkula/UnityChoiceOfGamesSaveManager/releases" ),
+							() => IgnoredNewVersion = upToDateVersion );
+					}
+				}
+			}
 		}
 
 		private IEnumerator FetchRemoteGameDataAsync()
