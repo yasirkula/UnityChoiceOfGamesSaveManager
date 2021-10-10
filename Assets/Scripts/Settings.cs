@@ -7,5 +7,6 @@ namespace CoGSaveManager
 	{
 		public string RemoteGameDataURL;
 		public bool IgnoreArticlesWhileSortingGames;
+		public float UIResolution;
 	}
 }

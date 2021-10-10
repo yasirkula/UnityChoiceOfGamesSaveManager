@@ -13,3 +13,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   RemoteGameDataURL: https://raw.githubusercontent.com/yasirkula/UnityChoiceOfGamesSaveManager/master/RemoteGameData.json
   IgnoreArticlesWhileSortingGames: 1
+  UIResolution: 600

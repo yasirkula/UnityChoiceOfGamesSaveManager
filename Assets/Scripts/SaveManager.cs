@@ -93,6 +93,12 @@ namespace CoGSaveManager
 		private NewVersionDialog newVersionDialog;
 
 		[SerializeField]
+		private CanvasScaler canvasScaler;
+
+		[SerializeField]
+		private RectTransform[] dropdownTemplates;
+
+		[SerializeField]
 		private Color gameSaveDirectoryInvalidColor;
 		private Color gameSaveDirectoryValidColor;
 		private Image gameSaveDirectoryBackground;
@@ -329,6 +335,26 @@ namespace CoGSaveManager
 			catch( Exception e )
 			{
 				Debug.LogException( e );
+			}
+
+			// Update UI resolution if needed
+			if( !Mathf.Approximately( settings.UIResolution, canvasScaler.referenceResolution.y ) )
+			{
+				// Preserve dropdowns' distance to the screen's bottom edge so that when UI resolution increases, dropdowns can display more elements at once
+				float[] dropdownBottomDistances = new float[dropdownTemplates.Length];
+				for( int i = 0; i < dropdownTemplates.Length; i++ )
+					dropdownBottomDistances[i] = dropdownTemplates[i].position.y - dropdownTemplates[i].sizeDelta.y * dropdownTemplates[i].lossyScale.y;
+
+				// Update UI resolution
+				canvasScaler.referenceResolution = new Vector2( canvasScaler.referenceResolution.x, Mathf.Max( 400f, settings.UIResolution ) );
+
+				// CanvasScaler isn't updated unless its Update or OnEnable functions are called, trigger OnEnable immediately
+				canvasScaler.enabled = false;
+				canvasScaler.enabled = true;
+
+				// Restore dropdowns' distance to the screen's bottom edge
+				for( int i = 0; i < dropdownTemplates.Length; i++ )
+					dropdownTemplates[i].sizeDelta = new Vector2( dropdownTemplates[i].sizeDelta.x, ( dropdownTemplates[i].position.y - dropdownBottomDistances[i] ) / dropdownTemplates[i].lossyScale.y );
 			}
 
 			try
