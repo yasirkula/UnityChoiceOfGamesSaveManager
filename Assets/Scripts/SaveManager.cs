@@ -104,7 +104,7 @@ namespace CoGSaveManager
 		private Image gameSaveDirectoryBackground;
 #pragma warning restore 0649
 
-		private string m_gameSaveFilePath, gameSaveDirectory, currentPlaythrough;
+		private string m_gameSaveFilePath, gameSaveDirectory, gameSaveFilename, currentPlaythrough;
 		private string GameSaveFilePath
 		{
 			get
@@ -115,7 +115,9 @@ namespace CoGSaveManager
 					if( !string.IsNullOrEmpty( m_gameSaveFilePath ) && !File.Exists( m_gameSaveFilePath ) )
 						m_gameSaveFilePath = "";
 
+					gameSaveFilename = string.IsNullOrEmpty( m_gameSaveFilePath ) ? "" : Path.GetFileName( m_gameSaveFilePath );
 					currentPlaythrough = string.IsNullOrEmpty( m_gameSaveFilePath ) ? DEFAULT_PLAYTHROUGH_NAME : GetAllPlaythroughs( m_gameSaveFilePath )[0];
+
 					RefreshGameTitle();
 				}
 
@@ -129,6 +131,7 @@ namespace CoGSaveManager
 						value = "";
 
 					m_gameSaveFilePath = value;
+					gameSaveFilename = !string.IsNullOrEmpty( value ) ? Path.GetFileName( value ) : "";
 					gameSaveDirectory = !string.IsNullOrEmpty( value ) ? Path.GetDirectoryName( Path.GetDirectoryName( value ) ) : "";
 
 					if( !string.IsNullOrEmpty( gameSaveDirectory ) )
@@ -751,14 +754,14 @@ namespace CoGSaveManager
 		private void SaveInternal( string rootDirectory )
 		{
 			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
-				CopyDirectoryRecursively( gameSaveDirectory, rootDirectory );
+				CopyDirectoryRecursively( gameSaveDirectory, rootDirectory, true );
 		}
 
 		private bool LoadGame( string rootDirectory )
 		{
 			if( !string.IsNullOrEmpty( GameSaveFilePath ) && File.Exists( GameSaveFilePath ) )
 			{
-				CopyDirectoryRecursively( rootDirectory, gameSaveDirectory );
+				CopyDirectoryRecursively( rootDirectory, gameSaveDirectory, false );
 				return true;
 			}
 
@@ -856,7 +859,6 @@ namespace CoGSaveManager
 				string saveDirectoryRemote = Path.Combine( saveDirectory, "remote" );
 				if( Directory.Exists( saveDirectoryRemote ) )
 				{
-					string gameSaveFilename = Path.GetFileName( GameSaveFilePath );
 					foreach( string saveDirectoryContent in Directory.GetFiles( saveDirectoryRemote, gameSaveFilename ) )
 					{
 						if( Path.GetFileName( saveDirectoryContent ) == gameSaveFilename )
@@ -1057,22 +1059,20 @@ namespace CoGSaveManager
 			}
 		}
 
-		private void CopyDirectoryRecursively( string sourceDirectory, string destinationDirectory )
+		private void CopyDirectoryRecursively( string sourceDirectory, string destinationDirectory, bool isSaving )
 		{
 			Directory.CreateDirectory( destinationDirectory );
 			DirectoryInfo directory = new DirectoryInfo( sourceDirectory );
 
 			foreach( FileInfo file in directory.GetFiles() )
 			{
-				string tempPath = Path.Combine( destinationDirectory, file.Name );
-				file.CopyTo( tempPath, true );
+				string filename = file.Name;
+				if( !isSaving || filename == gameSaveFilename ) // While saving, copy only the 'storePS{GAME_NAME}PSstate' file (gameSaveFilename) which is the only needed file
+					file.CopyTo( Path.Combine( destinationDirectory, filename ), true );
 			}
 
 			foreach( DirectoryInfo subDirectory in directory.GetDirectories() )
-			{
-				string tempPath = Path.Combine( destinationDirectory, subDirectory.Name );
-				CopyDirectoryRecursively( subDirectory.FullName, tempPath );
-			}
+				CopyDirectoryRecursively( subDirectory.FullName, Path.Combine( destinationDirectory, subDirectory.Name ), isSaving );
 		}
 
 		private string RemoveInvalidFilenameCharsFromString( string str )
@@ -1122,7 +1122,7 @@ namespace CoGSaveManager
 				string saveFileUserID = GetSaveFileUserID( originalSaveFiles[i] );
 				allUserIDs.Add( saveFileUserID );
 
-				CopyDirectoryRecursively( saveFilesToMigrate[i], Path.Combine( Path.Combine( OutputDirectory, saveFileUserID ), string.Concat( Path.GetFileName( saveFilesToMigrate[i] ), "_", DEFAULT_PLAYTHROUGH_NAME ) ) );
+				CopyDirectoryRecursively( saveFilesToMigrate[i], Path.Combine( Path.Combine( OutputDirectory, saveFileUserID ), string.Concat( Path.GetFileName( saveFilesToMigrate[i] ), "_", DEFAULT_PLAYTHROUGH_NAME ) ), false );
 				progressbarDialog.UpdateProgressbar( (float) ( i + 1 ) / ( originalSaveFiles.Count + legacySaveFiles.Count ), string.Concat( ( i + 1 ).ToString(), "/", ( originalSaveFiles.Count + legacySaveFiles.Count ).ToString() ) );
 
 				yield return null;
@@ -1143,7 +1143,7 @@ namespace CoGSaveManager
 
 					foreach( string userID in _allUserIDs )
 					{
-						CopyDirectoryRecursively( legacySaveFile, Path.Combine( Path.Combine( OutputDirectory, userID ), string.Concat( Path.GetFileName( legacySaveFile ), "_", DEFAULT_PLAYTHROUGH_NAME ) ) );
+						CopyDirectoryRecursively( legacySaveFile, Path.Combine( Path.Combine( OutputDirectory, userID ), string.Concat( Path.GetFileName( legacySaveFile ), "_", DEFAULT_PLAYTHROUGH_NAME ) ), false );
 						yield return null;
 					}
 
