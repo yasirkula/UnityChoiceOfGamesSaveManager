@@ -131,6 +131,11 @@
 	"ReadableName": "Keeper of the Sun and Moon"
 },
 {
+	"GameID": "1290460",
+	"SaveFileName": "lightyearsapart",
+	"ReadableName": "Light Years Apart"
+},
+{
 	"GameID": "439770",
 	"SaveFileName": "lostheir",
 	"ReadableName": "The Lost Heir: The Fall of Daria"
@@ -219,6 +224,11 @@
 	"GameID": "524540",
 	"SaveFileName": "samuraiofhyuga",
 	"ReadableName": "Samurai of Hyuga"
+},
+{
+	"GameID": "772340",
+	"SaveFileName": "showdown",
+	"ReadableName": "Showdown at Willow Creek"
 },
 {
 	"GameID": "839940",
