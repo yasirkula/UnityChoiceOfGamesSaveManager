@@ -31,6 +31,11 @@
 	"ReadableName": "Champion of the Gods"
 },
 {
+	"GameID": "1585050",
+	"SaveFileName": "cliffhanger",
+	"ReadableName": "Cliffhanger: Challenger of Tomorrow"
+},
+{
 	"GameID": "423120",
 	"SaveFileName": "communitycollegehero",
 	"ReadableName": "Community College Hero: Trial by Fire"
@@ -84,6 +89,11 @@
 	"GameID": "1166600",
 	"SaveFileName": "fogknows",
 	"ReadableName": "The Fog Knows Your Name"
+},
+{
+	"GameID": "446310",
+	"SaveFileName": "gunsofinfinity",
+	"ReadableName": "Guns of Infinity"
 },
 {
 	"GameID": "1110030",
@@ -284,5 +294,15 @@
 	"GameID": "1662750",
 	"SaveFileName": "wraiths",
 	"ReadableName": "Wraiths of SENTINEL"
+},
+{
+	"GameID": "411570",
+	"SaveFileName": "zombieexodus",
+	"ReadableName": "Zombie Exodus"
+},
+{
+	"GameID": "543980",
+	"SaveFileName": "zombieexodussafehaven",
+	"ReadableName": "Zombie Exodus: Safe Haven"
 }
 ]}
