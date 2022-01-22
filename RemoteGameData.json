@@ -76,6 +76,11 @@
 	"ReadableName": "Evertree Inn"
 },
 {
+	"GameID": "1584900",
+	"SaveFileName": "faeriesbargain",
+	"ReadableName": "Faerie's Bargain: The Price of Business"
+},
+{
 	"GameID": "800620",
 	"SaveFileName": "fallenherorebirth",
 	"ReadableName": "Fallen Hero: Rebirth"
@@ -261,6 +266,11 @@
 	"ReadableName": "The Soul Stone War"
 },
 {
+	"GameID": "1775520",
+	"SaveFileName": "soulstonewar2",
+	"ReadableName": "The Soul Stone War 2"
+},
+{
 	"GameID": "421630",
 	"SaveFileName": "studyinsteampunk",
 	"ReadableName": "A Study in Steampunk: Choice by Gaslight"
@@ -289,6 +299,11 @@
 	"GameID": "1233950",
 	"SaveFileName": "wayhaven2",
 	"ReadableName": "Wayhaven Chronicles: Book Two"
+},
+{
+	"GameID": "1580300",
+	"SaveFileName": "witchcraftu",
+	"ReadableName": "Witchcraft U"
 },
 {
 	"GameID": "1662750",
