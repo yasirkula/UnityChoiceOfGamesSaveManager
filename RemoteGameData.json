@@ -286,6 +286,11 @@
 	"ReadableName": "Tin Star"
 },
 {
+	"GameID": "1849760",
+	"SaveFileName": "treboulain",
+	"ReadableName": "Siege of Treboulain"
+},
+{
 	"GameID": "1515420",
 	"SaveFileName": "vampireregent",
 	"ReadableName": "The Vampire Regent"
