@@ -32,7 +32,10 @@ namespace CoGSaveManager
 			ignoreErrorButton.onClick.AddListener( () =>
 			{
 				if( !string.IsNullOrEmpty( displayedError ) )
-					ignoredErrors.Add( displayedError );
+				{
+					lock( queueLock )
+						ignoredErrors.Add( displayedError );
+				}
 
 				errorPanel.gameObject.SetActive( false );
 			} );
@@ -45,9 +48,10 @@ namespace CoGSaveManager
 			if( logType == LogType.Error || logType == LogType.Exception )
 			{
 				string errorMessage = string.Concat( logString, "\n", stackTrace );
-				if( !ignoredErrors.Contains( errorMessage ) )
+
+				lock( queueLock )
 				{
-					lock( queueLock )
+					if( !ignoredErrors.Contains( errorMessage ) )
 						queuedErrors.Enqueue( errorMessage );
 				}
 			}
