@@ -17,11 +17,11 @@ that file and these error messages can help me debug the issues much faster.
 
 Save manager converts the games' save file names to their readable names
 (e.g. 'keeperotsam' becomes 'Keeper of the Sun and Moon') by reading the
-following database: https://github.com/yasirkula/UnityChoiceOfGamesSaveManager/blob/master/RemoteGameData.json
-To help expand this database with other games (which, by the way, is very
-much appreciated), you can either create a Pull Request on GitHub, or if
-you don't have a GitHub account, you can contact me and I'll update the
-database for you. In either case, you'll need the following information:
+following database: https://gist.github.com/yasirkula/27302fcc36117b4741ea4817c1569434
+To help expand this database with other games (which is very much appreciated),
+you can either leave a comment on that page, or if you don't have a GitHub
+account, you can contact me and I'll update the database for you. In either
+case, you'll need the following information:
 
 - GameID: this is the numeric value that is displayed at the end of 'Game Save Directory'
 - SaveFileName: this is the value displayed in the title bar which we want to convert (e.g. "keeperotsam")

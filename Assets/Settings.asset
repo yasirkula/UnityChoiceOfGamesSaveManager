@@ -11,6 +11,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1aaa3994196ea784788b2658b60ed23c, type: 3}
   m_Name: Settings
   m_EditorClassIdentifier: 
-  RemoteGameDataURL: https://raw.githubusercontent.com/yasirkula/UnityChoiceOfGamesSaveManager/master/RemoteGameData.json
+  RemoteGameDataURL: https://gist.githubusercontent.com/yasirkula/27302fcc36117b4741ea4817c1569434/raw
   IgnoreArticlesWhileSortingGames: 1
   UIResolution: 600
