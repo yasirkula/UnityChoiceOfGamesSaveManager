@@ -16,7 +16,7 @@ namespace CoGSaveManager
 		private Text text;
 
 		[SerializeField]
-		private Color activeBackgroundColor, activeTextColor;
+		private Color activeBackgroundColor, activeTextColor, starredBackgroundColor, starredTextColor;
 		private Color inactiveBackgroundColor, inactiveTextColor;
 #pragma warning restore 0649
 
@@ -40,6 +40,11 @@ namespace CoGSaveManager
 			{
 				background.color = activeBackgroundColor;
 				text.color = activeTextColor;
+			}
+			else if( saveEntry.IsStarred )
+			{
+				background.color = starredBackgroundColor;
+				text.color = starredTextColor;
 			}
 			else
 			{

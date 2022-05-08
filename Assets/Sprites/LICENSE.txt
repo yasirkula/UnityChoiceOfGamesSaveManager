@@ -2,3 +2,5 @@
 
 Icon.psd: https://brandeps.com/icon/S/Save-06
 EditIcon.png: https://www.svgrepo.com/svg/42233/pencil-edit-button
+StarOnIcon.png: https://www.pngrepo.com/svg/111254/star
+StarOffIcon.png: https://www.pngrepo.com/svg/138894/star

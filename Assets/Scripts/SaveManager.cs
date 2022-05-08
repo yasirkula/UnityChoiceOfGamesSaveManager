@@ -38,6 +38,8 @@ namespace CoGSaveManager
 		private const string MANUAL_SAVES_FOLDER = "ManualSaves";
 		private const string AUTOMATED_SAVES_FOLDER = "AutomatedSaves";
 
+		public const string STARRED_SAVE_FILE = "Starred";
+
 		private const string SETTINGS_FILE = "Settings.json";
 
 		private const string GAME_TITLE_FORMAT = "- {0} ({1}) -";
@@ -728,7 +730,12 @@ namespace CoGSaveManager
 		{
 			string saveDirectory;
 			if( NumberOfAutomatedSaves <= automatedSaves.Count )
-				saveDirectory = automatedSaves.RemoveFirst().directory;
+			{
+				SaveEntry oldestSave = automatedSaves.RemoveFirst();
+				oldestSave.IsStarred = false;
+
+				saveDirectory = oldestSave.directory;
+			}
 			else
 			{
 				string directoryName = automatedSaves.Count.ToString();
@@ -770,7 +777,7 @@ namespace CoGSaveManager
 
 		private void OnSaveEntryClicked( SaveEntry saveEntry, bool isAutomatedSave )
 		{
-			loadConfirmationDialog.Show( saveEntry.saveName, () => // onLoad
+			loadConfirmationDialog.Show( saveEntry.saveName, saveEntry.IsStarred, () => // onLoad
 			{
 				if( LoadGame( saveEntry.directory ) && !isAutomatedSave )
 					manuallyLoadedGameDateTime = File.GetLastWriteTime( GetSaveFilePath( saveEntry.directory ) );
@@ -794,6 +801,15 @@ namespace CoGSaveManager
 					manualSavesScrollView.UpdateList();
 					RefreshManualSaveNamesDropdown();
 				}
+			},
+			( isStarred ) => // onToggleStar
+			{
+				saveEntry.IsStarred = isStarred;
+
+				if( isAutomatedSave )
+					automatedSavesScrollView.UpdateList();
+				else
+					manualSavesScrollView.UpdateList();
 			} );
 		}
 
