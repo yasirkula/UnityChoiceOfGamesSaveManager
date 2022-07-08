@@ -1109,7 +1109,7 @@ namespace CoGSaveManager
 		// Legacy save files won't be deleted after migration so that even if something unexpected happens during migration, users won't lose their original (legacy) save files
 		private IEnumerator MigrateSaveFilesToV1_2_0()
 		{
-			if( string.IsNullOrEmpty( OutputDirectory ) )
+			if( string.IsNullOrEmpty( OutputDirectory ) || !Directory.Exists( OutputDirectory ) )
 				yield break;
 
 			HashSet<string> legacySaveFiles = new HashSet<string>( Directory.GetDirectories( OutputDirectory ) );
