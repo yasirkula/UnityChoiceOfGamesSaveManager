@@ -111,6 +111,10 @@ namespace CoGSaveManager
 				File.WriteAllText( saveFilePath, sb.ToString() );
 				File.SetLastWriteTime( saveFilePath, lastWriteTime );
 
+				foreach( JsonNode node in modifiedJsonNodes )
+					originalJsonNodeValues[node] = node.StringValue;
+
+				modifiedJsonNodes.Clear();
 				OnSaveModifiedStateChanged( false );
 
 				if( OnSaveEntryModified != null )
