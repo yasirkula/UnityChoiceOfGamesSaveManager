@@ -199,7 +199,7 @@ namespace CoGSaveManager
 				do
 				{
 					result = json.IndexOf( '"', valueStartIndex + 1 );
-					valueStartIndex = result + 1;
+					valueStartIndex = result;
 
 					isLiteralQuote = false;
 					for( int i = result - 1; json[i] == '\\'; i-- )
