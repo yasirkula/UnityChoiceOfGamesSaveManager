@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using CoGSaveManager.Json;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace CoGSaveManager

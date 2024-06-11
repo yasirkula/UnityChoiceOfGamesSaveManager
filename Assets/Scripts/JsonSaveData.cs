@@ -2,7 +2,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace CoGSaveManager
+namespace CoGSaveManager.Json
 {
 	public enum JsonNodeType { Custom, Stats, Temps };
 
