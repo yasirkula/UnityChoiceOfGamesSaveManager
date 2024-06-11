@@ -398,10 +398,7 @@ namespace CoGSaveManager
 			manualSaveNameInputField.text = ManualSaveName;
 			numberOfAutomatedSavesInputField.text = NumberOfAutomatedSaves.ToString();
 
-			char[] _invalidFilenameChars = Path.GetInvalidFileNameChars();
-			invalidFilenameChars = new string[_invalidFilenameChars.Length];
-			for( int i = 0; i < _invalidFilenameChars.Length; i++ )
-				invalidFilenameChars[i] = _invalidFilenameChars[i].ToString();
+			invalidFilenameChars = Array.ConvertAll( Path.GetInvalidFileNameChars(), ( ch ) => ch.ToString() );
 
 			manualSaveNameInputField.onEndEdit.AddListener( ( value ) =>
 			{
@@ -491,7 +488,7 @@ namespace CoGSaveManager
 					}
 
 					LoadSaveFiles();
-				}, null, FileBrowser.PickMode.Folders, initialPath: initialPath, title: "Select the target Choice of Games' save directory" );
+				}, null, FileBrowser.PickMode.Folders, initialPath: initialPath, title: "Select the target game's save directory" );
 			} );
 
 			pickOutputDirectoryButton.onClick.AddListener( () => FileBrowser.ShowSaveDialog( ( paths ) => OutputDirectory = paths[0], null, FileBrowser.PickMode.Folders, title: "Select the folder where the save files will be stored", initialPath: OutputDirectory, saveButtonText: "Select" ) );
