@@ -25,9 +25,9 @@ namespace CoGSaveManager
 	[Serializable]
 	public class RemoteGameData
 	{
-		public string GameID;
 		public string SaveFileName;
 		public string ReadableName;
+		public string GameID;
 	}
 
 	public class SaveManager : MonoBehaviour
@@ -321,6 +321,7 @@ namespace CoGSaveManager
 		private readonly HashSet<string> automatedSaveDirectoryNames = new HashSet<string>();
 
 		private string[] invalidFilenameChars;
+		private static readonly char[] streamReaderBuffer = new char[100];
 
 		private DateTime manuallyLoadedGameDateTime;
 		public static DateTime CurrentlyActiveSaveDateTime;
@@ -970,8 +971,9 @@ namespace CoGSaveManager
 
 		private static RemoteGameData GetRemoteGameData( FileInfo saveFile )
 		{
+			string gameID = saveFile.Directory.Parent.Name;
 			List<RemoteGameData> matchingGameData;
-			if( remoteGameDataLookup.TryGetValue( saveFile.Directory.Parent.Name, out matchingGameData ) )
+			if( remoteGameDataLookup.TryGetValue( gameID, out matchingGameData ) )
 			{
 				string saveFileName = saveFile.Name;
 				for( int i = 0; i < matchingGameData.Count; i++ )
@@ -979,6 +981,45 @@ namespace CoGSaveManager
 					if( matchingGameData[i].SaveFileName == saveFileName )
 						return matchingGameData[i];
 				}
+			}
+
+			// Try fetching the game's name from the save file's contents ("choice_title")
+			try
+			{
+				using( StreamReader streamReader = saveFile.OpenText() )
+				{
+					int count = streamReader.ReadBlock( streamReaderBuffer, 0, 100 );
+					string saveContents = new string( streamReaderBuffer, 0, count );
+					int gameTitleIndex = saveContents.IndexOf( "\"choice_title\":\"" );
+					if( gameTitleIndex >= 0 )
+					{
+						gameTitleIndex += 16;
+						int gameTitleEndIndex = saveContents.IndexOf( '"', gameTitleIndex );
+						if( gameTitleEndIndex > gameTitleIndex )
+						{
+							RemoteGameData result = new RemoteGameData()
+							{
+								SaveFileName = GetReadableSaveFileName( saveFile.Name, false ),
+								ReadableName = saveContents.Substring( gameTitleIndex, gameTitleEndIndex - gameTitleIndex ),
+								GameID = gameID,
+							};
+#if UNITY_EDITOR
+							// Log missing games' data which would make it easier for me to update the remote data: https://gist.github.com/yasirkula/27302fcc36117b4741ea4817c1569434
+							Debug.LogWarning( JsonUtility.ToJson( result ) + "," );
+#endif
+
+							if( matchingGameData == null )
+								remoteGameDataLookup[gameID] = matchingGameData = new List<RemoteGameData>( 2 );
+
+							matchingGameData.Add( result );
+							return result;
+						}
+					}
+				}
+			}
+			catch( Exception e )
+			{
+				Debug.LogException( e );
 			}
 
 			return null;
