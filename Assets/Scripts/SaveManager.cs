@@ -614,6 +614,16 @@ namespace CoGSaveManager
 
 		private void Update()
 		{
+#if UNITY_EDITOR
+			// In Unity editor, stop play mode immediately if a script is compiling because otherwise it causes issues after compilation is finished (e.g. duplicate automated save issue)
+			if( UnityEditor.EditorApplication.isCompiling )
+			{
+				Debug.Log( "<b>Exiting play mode because a script is compiling!</b>" );
+				UnityEditor.EditorApplication.isPlaying = false;
+				return;
+			}
+#endif
+
 			if( Time.time > nextAutomatedSaveCheckTime )
 			{
 				nextAutomatedSaveCheckTime = Time.time + saveCheckInterval;
