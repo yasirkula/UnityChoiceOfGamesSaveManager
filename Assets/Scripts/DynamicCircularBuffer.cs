@@ -114,9 +114,9 @@ namespace CoGSaveManager
 
 		public T RemoveLast()
 		{
-			T element = arr[Count - 1];
+			T element = this[Count - 1];
 #if RESET_REMOVED_ELEMENTS
-			arr[Count - 1] = default( T );
+			this[Count - 1] = default( T );
 #endif
 
 			Count--;
