@@ -342,6 +342,8 @@ namespace CoGSaveManager
 				Debug.LogException( e );
 			}
 
+			canvasScaler.GetComponent<Canvas>().pixelPerfect = settings.UIPixelPerfect;
+
 			// Update UI resolution if needed
 			if( !Mathf.Approximately( settings.UIResolution, canvasScaler.referenceResolution.y ) )
 			{

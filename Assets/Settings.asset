@@ -14,3 +14,4 @@ MonoBehaviour:
   RemoteGameDataURL: https://gist.githubusercontent.com/yasirkula/27302fcc36117b4741ea4817c1569434/raw
   IgnoreArticlesWhileSortingGames: 1
   UIResolution: 600
+  UIPixelPerfect: 1
