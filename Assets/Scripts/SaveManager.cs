@@ -566,18 +566,10 @@ namespace CoGSaveManager
 
 			try
 			{
-				bool exploredGameSaveFilePathsChanged = false;
-				CachedSaveFilePaths cachedSaveFilePaths = JsonUtility.FromJson<CachedSaveFilePaths>( PlayerPrefs.GetString( "CachedSaveFilePaths", "{}" ) );
-				if( cachedSaveFilePaths.paths != null )
-				{
-					exploredGameSaveFilePaths.UnionWith( cachedSaveFilePaths.paths );
-
-					// Remove cached save file paths that no longer exist
-					if( exploredGameSaveFilePaths.RemoveWhere( ( cachedSaveFilePath ) => !File.Exists( cachedSaveFilePath ) ) > 0 )
-						exploredGameSaveFilePathsChanged = true;
-				}
+				LoadCachedSaveFilePaths();
 
 				// Automatically fetch the list of Choice of Games from Steam saves folder at each launch
+				bool exploredGameSaveFilePathsChanged = false;
 				if( !string.IsNullOrEmpty( SteamSavesDirectory ) )
 				{
 					foreach( string potentialSaveFilePath in Directory.GetFiles( SteamSavesDirectory, "*PSstate", SearchOption.AllDirectories ) )
@@ -588,13 +580,7 @@ namespace CoGSaveManager
 				}
 
 				if( exploredGameSaveFilePathsChanged )
-				{
-					string[] _exploredGameSaveFilePaths = new string[exploredGameSaveFilePaths.Count];
-					exploredGameSaveFilePaths.CopyTo( _exploredGameSaveFilePaths );
-
-					PlayerPrefs.SetString( "CachedSaveFilePaths", JsonUtility.ToJson( new CachedSaveFilePaths() { paths = _exploredGameSaveFilePaths } ) );
-					PlayerPrefs.Save();
-				}
+					SaveCachedSaveFilePaths();
 			}
 			catch( Exception e )
 			{
@@ -837,6 +823,42 @@ namespace CoGSaveManager
 			manualSaveNamesDropdown.options = manualSaveNames;
 		}
 
+		private void LoadCachedSaveFilePaths()
+		{
+			try
+			{
+				CachedSaveFilePaths cachedSaveFilePaths = JsonUtility.FromJson<CachedSaveFilePaths>( PlayerPrefs.GetString( "CachedSaveFilePaths", "{}" ) );
+				if( cachedSaveFilePaths.paths != null )
+				{
+					exploredGameSaveFilePaths.UnionWith( cachedSaveFilePaths.paths );
+
+					// Remove cached save file paths that no longer exist
+					if( exploredGameSaveFilePaths.RemoveWhere( ( cachedSaveFilePath ) => !File.Exists( cachedSaveFilePath ) ) > 0 )
+						SaveCachedSaveFilePaths();
+				}
+			}
+			catch( Exception e )
+			{
+				Debug.LogException( e );
+			}
+		}
+
+		private void SaveCachedSaveFilePaths()
+		{
+			try
+			{
+				string[] _exploredGameSaveFilePaths = new string[exploredGameSaveFilePaths.Count];
+				exploredGameSaveFilePaths.CopyTo( _exploredGameSaveFilePaths );
+
+				PlayerPrefs.SetString( "CachedSaveFilePaths", JsonUtility.ToJson( new CachedSaveFilePaths() { paths = _exploredGameSaveFilePaths } ) );
+				PlayerPrefs.Save();
+			}
+			catch( Exception e )
+			{
+				Debug.LogException( e );
+			}
+		}
+
 		private string[] GetAllSaveFilePaths( string saveDirectory )
 		{
 			List<string> result = new List<string>( 2 );
@@ -858,20 +880,7 @@ namespace CoGSaveManager
 					}
 
 					if( newSaveFilePathExplored )
-					{
-						try
-						{
-							string[] _exploredGameSaveFilePaths = new string[exploredGameSaveFilePaths.Count];
-							exploredGameSaveFilePaths.CopyTo( _exploredGameSaveFilePaths );
-
-							PlayerPrefs.SetString( "CachedSaveFilePaths", JsonUtility.ToJson( new CachedSaveFilePaths() { paths = _exploredGameSaveFilePaths } ) );
-							PlayerPrefs.Save();
-						}
-						catch( Exception e )
-						{
-							Debug.LogException( e );
-						}
-					}
+						SaveCachedSaveFilePaths();
 				}
 			}
 
