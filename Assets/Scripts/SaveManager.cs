@@ -42,8 +42,6 @@ namespace CoGSaveManager
 
 		private const string SETTINGS_FILE = "Settings.json";
 
-		private const string GAME_TITLE_FORMAT = "- {0} ({1}) -";
-
 #pragma warning disable 0649
 		[SerializeField]
 		private float saveCheckInterval = 0.1f;
@@ -1033,7 +1031,12 @@ namespace CoGSaveManager
 
 		private void RefreshGameTitle()
 		{
-			gameTitleText.text = string.IsNullOrEmpty( GameSaveFilePath ) ? "No Choice of Game selected" : string.Format( GAME_TITLE_FORMAT, GetReadableSaveFileName( GameSaveFilePath, true ), currentPlaythrough );
+			if( string.IsNullOrEmpty( GameSaveFilePath ) )
+				gameTitleText.text = "No game selected";
+			else if( currentPlaythrough == DEFAULT_PLAYTHROUGH_NAME )
+				gameTitleText.text = string.Format( "- {0} -", GetReadableSaveFileName( GameSaveFilePath, true ) );
+			else
+				gameTitleText.text = string.Format( "- {0} ({1}) -", GetReadableSaveFileName( GameSaveFilePath, true ), currentPlaythrough );
 		}
 
 		private IEnumerator CheckForUpdatesAsync()
