@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace CoGSaveManager
@@ -10,15 +11,15 @@ namespace CoGSaveManager
 		private Text text;
 
 		[SerializeField]
-		private Button loadButton, editButton, deleteButton, cancelButton, toggleStarButton;
+		private Button loadButton, editButton, choicesButton, deleteButton, cancelButton, toggleStarButton;
 		private Image toggleStarButtonImage;
 
 		[SerializeField]
 		private Sprite toggleStarButtonOffIcon, toggleStarButtonOnIcon;
 #pragma warning restore 0649
 
-		private System.Action onLoad, onEdit, onDelete;
-		private System.Action<bool> onToggleStar;
+		private Action onLoad, onEdit, onSeeChoices, onDelete;
+		private Action<bool> onToggleStar;
 
 		private bool isStarred;
 
@@ -26,30 +27,10 @@ namespace CoGSaveManager
 		{
 			toggleStarButtonImage = toggleStarButton.GetComponent<Image>();
 
-			loadButton.onClick.AddListener( () =>
-			{
-				if( onLoad != null )
-					onLoad();
-
-				gameObject.SetActive( false );
-			} );
-
-			editButton.onClick.AddListener( () =>
-			{
-				if( onEdit != null )
-					onEdit();
-
-				gameObject.SetActive( false );
-			} );
-
-			deleteButton.onClick.AddListener( () =>
-			{
-				if( onDelete != null )
-					onDelete();
-
-				gameObject.SetActive( false );
-			} );
-
+			loadButton.onClick.AddListener( () => InvokeCallbackAndHide( onLoad ) );
+			editButton.onClick.AddListener( () => InvokeCallbackAndHide( onEdit ) );
+			choicesButton.onClick.AddListener( () => InvokeCallbackAndHide( onSeeChoices ) );
+			deleteButton.onClick.AddListener( () => InvokeCallbackAndHide( onDelete ) );
 			cancelButton.onClick.AddListener( () => gameObject.SetActive( false ) );
 
 			toggleStarButton.onClick.AddListener( () =>
@@ -61,12 +42,13 @@ namespace CoGSaveManager
 			} );
 		}
 
-		public void Show( string saveName, bool isStarred, System.Action onLoad, System.Action onEdit, System.Action onDelete, System.Action<bool> onToggleStar )
+		public void Show( string saveName, bool isStarred, Action onLoad, Action onEdit, Action onSeeChoices, Action onDelete, Action<bool> onToggleStar )
 		{
 			text.text = saveName;
 
 			this.onLoad = onLoad;
 			this.onEdit = onEdit;
+			this.onSeeChoices = onSeeChoices;
 			this.onDelete = onDelete;
 			this.onToggleStar = onToggleStar;
 
@@ -79,6 +61,14 @@ namespace CoGSaveManager
 		{
 			this.isStarred = isStarred;
 			toggleStarButtonImage.sprite = isStarred ? toggleStarButtonOnIcon : toggleStarButtonOffIcon;
+		}
+
+		private void InvokeCallbackAndHide( Action callback )
+		{
+			if( callback != null )
+				callback();
+
+			gameObject.SetActive( false );
 		}
 	}
 }

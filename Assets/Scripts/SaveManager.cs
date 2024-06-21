@@ -17,6 +17,13 @@ namespace CoGSaveManager
 	}
 
 	[Serializable]
+	public class GameAsarPath
+	{
+		public string SaveFileName;
+		public string AsarFilePath;
+	}
+
+	[Serializable]
 	public class RemoteData
 	{
 		public RemoteGameData[] RemoteGameData;
@@ -70,6 +77,9 @@ namespace CoGSaveManager
 
 		[SerializeField]
 		private SaveEditorWindow saveEditorWindow;
+
+		[SerializeField]
+		private ChoiceExplorerWindow choiceExplorerWindow;
 
 		[SerializeField]
 		private LoadConfirmationDialog loadConfirmationDialog;
@@ -328,6 +338,8 @@ namespace CoGSaveManager
 
 		private static readonly Dictionary<string, List<RemoteGameData>> remoteGameDataLookup = new Dictionary<string, List<RemoteGameData>>( 128 );
 
+		private static bool verboseLogging;
+
 		private void Awake()
 		{
 			// Overwrite settings using local settings file (if exists)
@@ -341,6 +353,7 @@ namespace CoGSaveManager
 				Debug.LogException( e );
 			}
 
+			verboseLogging = settings.VerboseLogging;
 			canvasScaler.GetComponent<Canvas>().pixelPerfect = settings.UIPixelPerfect;
 
 			// Update UI resolution if needed
@@ -750,6 +763,9 @@ namespace CoGSaveManager
 			automatedSaves.Add( new SaveEntry( saveDirectory, CurrentlyActiveSaveDateTime ) );
 			automatedSaveDirectoryNames.Add( Path.GetFileName( saveDirectory ) );
 			automatedSavesScrollView.UpdateList();
+
+			if( settings.AutoShowChoiceExplorer )
+				ShowChoiceExplorerWindow( automatedSaves[automatedSaves.Count - 1] );
 		}
 
 		private void SaveInternal( string rootDirectory )
@@ -780,6 +796,10 @@ namespace CoGSaveManager
 			{
 				saveEditorWindow.Show( saveEntry, GetSaveFilePath( saveEntry.directory ) );
 			},
+			() => // onSeeChoices
+			{
+				ShowChoiceExplorerWindow( saveEntry );
+			},
 			() => // onDelete
 			{
 				Directory.Delete( saveEntry.directory, true );
@@ -805,6 +825,38 @@ namespace CoGSaveManager
 				else
 					manualSavesScrollView.UpdateList();
 			} );
+		}
+
+		private void ShowChoiceExplorerWindow( SaveEntry saveEntry )
+		{
+			string saveFilePath = GetSaveFilePath( saveEntry.directory );
+			string gameAsarFilePath = null;
+			try
+			{
+				GameAsarPath lastGameAsarPath = JsonUtility.FromJson<GameAsarPath>( PlayerPrefs.GetString( "LastGameAsar", "{}" ) );
+				if( !string.IsNullOrEmpty( lastGameAsarPath.SaveFileName ) && lastGameAsarPath.SaveFileName == GetReadableSaveFileName( saveFilePath, false ) )
+					gameAsarFilePath = lastGameAsarPath.AsarFilePath;
+				if( string.IsNullOrEmpty( gameAsarFilePath ) || !File.Exists( gameAsarFilePath ) )
+					gameAsarFilePath = Path.Combine( Path.GetDirectoryName( SteamSavesDirectory ), string.Format( "steamapps/common/{0}/resources/app.asar", RemoveInvalidFilenameCharsFromString( GetReadableSaveFileName( GameSaveFilePath, true ) ) ) );
+			}
+			catch
+			{
+			}
+
+			if( !string.IsNullOrEmpty( gameAsarFilePath ) && File.Exists( gameAsarFilePath ) )
+				choiceExplorerWindow.Show( saveFilePath, gameAsarFilePath );
+			else
+			{
+				FileBrowser.SetFilters( false, ".asar" );
+				FileBrowser.ShowLoadDialog( ( paths ) =>
+				{
+					PlayerPrefs.SetString( "LastGameAsar", JsonUtility.ToJson( new GameAsarPath() { SaveFileName = GetReadableSaveFileName( saveFilePath, false ), AsarFilePath = paths[0] } ) );
+					PlayerPrefs.Save();
+
+					choiceExplorerWindow.Show( saveFilePath, paths[0] );
+				}, null, FileBrowser.PickMode.Files,
+				initialPath: Path.Combine( Path.GetDirectoryName( SteamSavesDirectory ), string.Format( "steamapps/common/" ) ), initialFilename: "app.asar", title: "Select 'steamapps/common/GAME/resources/app.asar'" );
+			}
 		}
 
 		private void RefreshManualSaveNamesDropdown()
@@ -1161,6 +1213,38 @@ namespace CoGSaveManager
 
 			return str;
 		}
+
+		#region Logging
+		public static void LogVerbose( string format, object arg0 )
+		{
+			if( verboseLogging )
+				LogVerbose( string.Format( format, arg0 ) );
+		}
+
+		public static void LogVerbose( string format, object arg0, object arg1 )
+		{
+			if( verboseLogging )
+				LogVerbose( string.Format( format, arg0, arg1 ) );
+		}
+
+		public static void LogVerbose( string format, object arg0, object arg1, object arg2 )
+		{
+			if( verboseLogging )
+				LogVerbose( string.Format( format, arg0, arg1, arg2 ) );
+		}
+
+		public static void LogVerbose( string format, params object[] args )
+		{
+			if( verboseLogging )
+				LogVerbose( string.Format( format, args ) );
+		}
+
+		public static void LogVerbose( string message )
+		{
+			if( verboseLogging )
+				Debug.Log( message );
+		}
+		#endregion
 
 		// In v1.2.0, save files have changes as follows compared to v1.0.0:
 		// - Save files are grouped under Steam User IDs so that each Steam user's save files will be stored in a separate directory

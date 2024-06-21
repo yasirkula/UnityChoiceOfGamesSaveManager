@@ -21,9 +21,13 @@ The project is created with *Unity 5.6.2f1*, so it can be modified on pretty muc
 
 ![Screenshot](Images/LoadDialog.png)
 
-- You can edit a save by clicking it. Similar to loading a save, you **must** first close the game and wait a little while for the *Steam Cloud Save* to finish (if enabled). Before editing an important save, you're recommended to backup it as a separate *Manual Save*, just in case
+- You can edit a save by clicking the **Edit** button. Similar to loading a save, you **must** first close the game and wait a little while for the *Steam Cloud Save* to finish (if enabled). Before editing an important save, you're recommended to backup it as a separate *Manual Save*, just in case
 
 ![Screenshot](Images/SaveEditor.png)
+
+- You can see the stat checks/source code behind the choices of a save by clicking the **Choices** button (*code diving*). This window will also show the variables' latest values next to their names in orange color (only on command lines)
+
+![Screenshot](Images/ChoiceExplorer.png)
 
 - To switch between previously explored Choice of Games (without having to change *Game Save Directory* manually at each time), you can click the current game's title ("*- Evertree Inn (Default) -*" in the first screenshot) and choose the target game from the list.
   
