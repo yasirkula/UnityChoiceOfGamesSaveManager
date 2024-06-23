@@ -737,10 +737,9 @@ namespace CoGSaveManager
 				{
 					SaveManager.LogVerbose( "<b>=== Evaluating expression {0}: {1}</b>", lineNumber, line );
 
-					int index = command.Length + 1;
-					Token variable = EvaluateExpression( line, ref index, 0, EvaluateFlags.StopAtFirstToken );
-					Token value = ( index < line.Length ) ? EvaluateExpression( line, ref index ) : Token.Null(); // "*temp"s second parameter is optional so don't attempt to evaluate it if it simply doesn't exist
-					SetVariable( variable.AsVariableName(), value, command == "temp" );
+					List<Token> arguments = GetCommandArguments( line, EvaluateFlags.StopAtFirstToken, EvaluateFlags.None );
+					Token value = ( arguments.Count > 1 ) ? arguments[1] : Token.Null(); // "*temp"s second parameter is optional so it may not exist
+					SetVariable( arguments[0].AsVariableName(), value, command == "temp" );
 
 					SaveManager.LogVerbose( "<b>=== Evaluated expression {0}</b>", value );
 				}
