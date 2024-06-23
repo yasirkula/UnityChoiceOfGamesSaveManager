@@ -34,12 +34,12 @@ namespace CoGSaveManager
 				if( Labels.TryGetValue( label, out value ) )
 					return value.AsInt;
 
-				sb.Append( "<b>Label " ).Append( label ).Append( " isn't found in scene " ).Append( Name ).Append( ". All labels:" );
+				StringBuilder sb = new StringBuilder( 100 + Labels.Count * 50 );
+				sb.Append( "Label '" ).Append( label ).Append( "' isn't found in scene '" ).Append( Name ).Append( "'. All labels:" );
 				foreach( KeyValuePair<string, JSONNode> kvPair in Labels )
 					sb.Append( "\n- " ).Append( kvPair.Value.RawValue ).Append( ": " ).Append( kvPair.Key );
-				sb.Append( "</b>\n" );
 
-				return 999999;
+				throw new Exception( sb.ToString() );
 			}
 		}
 
@@ -539,7 +539,17 @@ namespace CoGSaveManager
 
 		private SceneData GetScene( FileStream fs, string sceneName )
 		{
-			SceneData scene = scenesLookup[sceneName];
+			SceneData scene;
+			if( !scenesLookup.TryGetValue( sceneName, out scene ) )
+			{
+				StringBuilder sb = new StringBuilder( 100 + scenesLookup.Count * 50 );
+				sb.Append( "Scene '" ).Append( sceneName ).Append( "' isn't found. All scenes:" );
+				foreach( string _sceneName in scenesLookup.Keys )
+					sb.Append( "\n- " ).Append( _sceneName );
+
+				throw new Exception( sb.ToString() );
+			}
+
 			if( scene.Lines == null )
 			{
 				fs.Seek( scene.Offset, SeekOrigin.Begin );
