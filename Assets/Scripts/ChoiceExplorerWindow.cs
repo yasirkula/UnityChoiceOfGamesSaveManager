@@ -15,7 +15,27 @@ namespace CoGSaveManager
 	public class ChoiceExplorerWindow : MonoBehaviour
 	{
 		private enum TokenType { None, Variable, Bool, Number, String };
-		private enum EvaluateFlags { None = 0, StopAtFirstToken = 1 << 1, StopAtWhitespace = 1 << 2 };
+		private enum EvaluateFlags
+		{
+			/// <summary>
+			/// If no flag is set, the whole line will be evaluated. So, the line "<c>some_variable >= 1</c>"s evaluation will return the comparison's result as <see cref="TokenType.Bool"/>.
+			/// </summary>
+			None = 0,
+			/// <summary>
+			/// If set, the line "<c>some_variable >= 1</c>"s evaluation will stop at <c>some_variable</c> and it will be returned as <see cref="TokenType.Variable"/>.
+			/// </summary>
+			StopAtFirstToken = 1 << 1,
+			/// <summary>
+			/// If set, the first encountered word will be returned as <see cref="TokenType.String"/>, without evaluating any functions or operations (i.e. "<c>label-1</c>" will be returned as "label-1"
+			/// instead of attempting to evaluate "label" as <see cref="TokenType.Variable"/> and then subtracting 1 from it).
+			/// </summary>
+			StopAtFirstWord = 1 << 2,
+			/// <summary>
+			/// If set, evaluation will continue until encountering a whitespace. So the line "<c>some_variable >= 1</c>"s evaluation will stop at <c>some_variable</c> and it will be returned as
+			/// <see cref="TokenType.Variable"/> but the line "<c>some_variable>=1</c>" will be fully evaluated and returned as <see cref="TokenType.Bool"/>.
+			/// </summary>
+			StopAtWhitespace = 1 << 3,
+		};
 
 		private const string TEST_SCENARIO_FILE = "ChoiceExplorerTest.txt";
 
@@ -810,9 +830,34 @@ namespace CoGSaveManager
 						saveData["temps"]["choice_substack"].Add( stackEntry );
 					}
 
-					List<Token> arguments = GetCommandArguments( line );
-					lineNumber = scene.GetLabelLineNumber( command == "gotoref" ? arguments[0].AsString() : arguments[0].AsVariableName() );
-					SetVariable( "param", new JSONArray( ( arguments.Count > 1 ) ? arguments.GetRange( 1, arguments.Count - 1 ).ConvertAll( ( token ) => (JSONNode) token ) : new List<JSONNode>() ), true );
+					/// To learn why <see cref="Token.AsVariableName"/> is used for "goto" and "gosub" commands, see the comment inside "goto_scene".
+					/// ---
+					/// For "goto" command, the label name is the whole line after the command name.
+					/// For "gosub" command, the label name is the first word after the command name.
+					/// For "goto" and "gosub" commands, if the label name contains '{' or '[' characters, then it's evaluated as a standard token by ChoiceScript.
+					/// Otherwise, its value is assigned as is (i.e. "goto label+1" will set the label to "label+1").
+					/// For "gotoref" command, label name is always evaluated as a standard token by ChoiceScript. However, if the evaluated result is a string that
+					/// contains '{' or '[' characters, then that string is evaluated once again (double evaluation!).
+					string label;
+					int index = command.Length + 1;
+					if( command == "goto" )
+						label = line.Substring( index ).Trim();
+					else if( command == "gotoref" )
+						label = EvaluateExpression( line, ref index ).AsString();
+					else
+					{
+						List<Token> arguments = GetCommandArguments( line, EvaluateFlags.StopAtFirstWord );
+						label = arguments[0].AsVariableName();
+						SetVariable( "param", new JSONArray( ( arguments.Count > 1 ) ? arguments.GetRange( 1, arguments.Count - 1 ).ConvertAll( ( token ) => (JSONNode) token ) : new List<JSONNode>() ), true );
+					}
+
+					if( label.IndexOf( '{' ) >= 0 || label.IndexOf( '[' ) >= 0 )
+					{
+						index = 0;
+						label = EvaluateExpression( label, ref index ).AsVariableName();
+					}
+
+					lineNumber = scene.GetLabelLineNumber( label );
 				}
 				else if( command == "goto_scene" || command == "gosub_scene" )
 				{
@@ -828,10 +873,15 @@ namespace CoGSaveManager
 
 					saveData["temps"] = new JSONObject();
 
-					/// Not using <see cref="Token.AsString"/> while reading tokens because strings are entered without quotation marks in these commands and
-					/// thus, interpreted as <see cref="TokenType.Variable"/>s. Calling <see cref="Token.AsString"/> would attempt to fetch a non-existent
-					/// variable's value instead of just returning its <see cref="Token.Value"/>. <see cref="Token.AsVariableName"/> simply returns <see cref="Token.Value"/>.
-					List<Token> arguments = GetCommandArguments( line );
+					/// Not using <see cref="Token.AsString"/> while reading scene and label names (same goes for "goto" and "gosub" commands) because their
+					/// string values are entered without quotation marks in these commands and thus, they're interpreted as <see cref="TokenType.Variable"/>s.
+					/// Calling <see cref="Token.AsString"/> on them would attempt to fetch their non-existent variable values instead of just returning their
+					/// <see cref="Token.Value"/>s. Calling <see cref="Token.AsVariableName"/> will simply return their <see cref="Token.Value"/>s.
+					/// -----
+					/// If the line contains '{' or '[' characters, then the scene and label names are evaluated as standard tokens by ChoiceScript. Otherwise,
+					/// the first two words are assigned to them as is (i.e. "goto_scene scene-1 label+1" will set scene to "scene-1" and label to "label+1").
+					EvaluateFlags sceneAndLabelNameEvaluationFlags = ( line.IndexOf( '{' ) >= 0 || line.IndexOf( '[' ) >= 0 ) ? EvaluateFlags.StopAtFirstToken : EvaluateFlags.StopAtFirstWord;
+					List<Token> arguments = GetCommandArguments( line, sceneAndLabelNameEvaluationFlags, sceneAndLabelNameEvaluationFlags );
 					scene = GetScene( fs, arguments[0].AsVariableName() );
 					lineNumber = ( arguments.Count >= 2 ) ? scene.GetLabelLineNumber( arguments[1].AsVariableName() ) : -1;
 					SetVariable( "param", new JSONArray( ( arguments.Count > 2 ) ? arguments.GetRange( 2, arguments.Count - 2 ).ConvertAll( ( token ) => (JSONNode) token ) : new List<JSONNode>() ), true );
@@ -1026,7 +1076,6 @@ namespace CoGSaveManager
 			return result;
 		}
 
-		/// <param name="flags"><inheritdoc cref="EvaluateExpression"/></param>
 		private Token EvaluateFunction( string line, ref int index, int indexStartOffset = 0, EvaluateFlags flags = EvaluateFlags.None )
 		{
 			// Ignore whitespace before the opening parenthesis
@@ -1041,14 +1090,6 @@ namespace CoGSaveManager
 			return result;
 		}
 
-		/// <param name="flags">
-		/// - If <see cref="EvaluateFlags.StopAtFirstToken"/> is set, the line <c>some_variable >= 1</c> will return <c>some_variable</c> as <see cref="TokenType.Variable"/>.
-		///   Otherwise, it'll continue evaluating the line and return the result of the comparison as <see cref="TokenType.Bool"/> (returned <see cref="TokenType"/> may vary
-		///   depending on the <paramref name="line"/>).<br/>
-		/// - If <see cref="EvaluateFlags.StopAtWhitespace"/> is set, the line <c>some_variable >= 1</c> will return <c>some_variable</c> as <see cref="TokenType.Variable"/>
-		///   but the line <c>some_variable>=1</c> will return the result of the comparison as <see cref="TokenType.Bool"/> since the line will be evaluated until whitespace
-		///   is reached.
-		/// </param>
 		/// <param name="implicitVariable">
 		/// If a <see cref="Token"/> (e.g. variable) isn't found before an operator (e.g. '+', '-'), this variable will act as the left-hand side of the arithmetic operation.
 		/// Otherwise, this variable will silently be overwritten by the first found <see cref="Token"/>.
@@ -1078,6 +1119,18 @@ namespace CoGSaveManager
 					{
 						if( ch != '[' ) // "my_array[index]" is considered a single token by ChoiceScript
 							return currValue;
+					}
+
+					if( ( flags & EvaluateFlags.StopAtFirstWord ) == EvaluateFlags.StopAtFirstWord )
+					{
+						int wordStartIndex = index++;
+						while( index < line.Length && !char.IsWhiteSpace( line[index] ) )
+							index++;
+
+						string word = line.Substring( wordStartIndex, index - wordStartIndex );
+						SaveManager.LogVerbose( "Read word '{0}' at {1}-{2}", word, wordStartIndex, index - 1 );
+
+						return Token.String( word );
 					}
 
 					if( ch == '"' )
@@ -1540,7 +1593,7 @@ namespace CoGSaveManager
 			endIndex = index;
 		}
 
-		private List<Token> GetCommandArguments( string line )
+		private List<Token> GetCommandArguments( string line, params EvaluateFlags[] perArgumentFlags )
 		{
 			int startIndex, index;
 			GetCommandNameStartEndIndices( line, out startIndex, out index );
@@ -1550,7 +1603,7 @@ namespace CoGSaveManager
 			List<Token> result = new List<Token>( 4 );
 			while( index < line.Length )
 			{
-				Token token = EvaluateExpression( line, ref index, 0, EvaluateFlags.StopAtFirstToken );
+				Token token = EvaluateExpression( line, ref index, 0, ( perArgumentFlags != null && result.Count < perArgumentFlags.Length ) ? perArgumentFlags[result.Count] : EvaluateFlags.StopAtFirstToken );
 				if( token.Type != TokenType.None )
 					result.Add( token );
 			}
