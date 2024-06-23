@@ -7,6 +7,7 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 namespace CoGSaveManager
 {
@@ -737,6 +738,28 @@ namespace CoGSaveManager
 
 					SaveManager.LogVerbose( "<b>=== Evaluated expression {0}</b>", value );
 				}
+				else if( command == "rand" )
+				{
+					SaveManager.LogVerbose( "<b>=== Evaluating expression {0}: {1}</b>", lineNumber, line );
+
+					List<Token> arguments = GetCommandArguments( line );
+					Assertion( arguments.Count == 3, "*rand has {0} argument(s) but it expects 3", arguments.Count );
+
+					// If min and max values are provided as integers, then an integer in range [minValue, maxValue] will be returned.
+					// Otherwise, a double in range [minValue, maxValue) will be returned.
+					Token value;
+					double minValue = arguments[1].AsDouble(), maxValue = arguments[2].AsDouble();
+					if( minValue == maxValue )
+						value = Token.Number( minValue );
+					else if( minValue == (int) minValue && maxValue == (int) maxValue )
+						value = Token.Number( Random.Range( (int) minValue, (int) maxValue + 1 ) );
+					else
+						value = Token.Number( Random.Range( (float) minValue, (float) maxValue - Mathf.Epsilon ) );
+
+					SetVariable( arguments[0].AsVariableName(), value );
+
+					SaveManager.LogVerbose( "<b>=== Evaluated expression {0}</b>", value );
+				}
 				else if( command == "params" )
 				{
 					List<Token> paramNames = GetCommandArguments( line );
@@ -823,7 +846,7 @@ namespace CoGSaveManager
 						break;
 					}
 				}
-				else if( command == "image" || command == "youtube" || command == "link" || command == "link_button" )
+				else if( command == "image" || command == "text_image" || command == "youtube" || command == "link" || command == "link_button" )
 					anyPageContentEncountered = true;
 				else if( command == "print" )
 				{
@@ -845,6 +868,17 @@ namespace CoGSaveManager
 					if( anyPageContentEncountered )
 						break;
 				}
+				else if( command == "restart" )
+				{
+					saveData["stats"].Clear();
+					saveData["temps"].Clear();
+
+					scene = GetScene( fs, "startup" );
+					lineNumber = -1;
+					anyPageContentEncountered = false;
+				}
+				else if( command == "reset" )
+					LogError( "*reset command isn't supported by ChoiceExplorer." );
 				else if( command == "delay_break" || command == "goto_random_scene" || command == "ending" || command == "delay_ending" || command == "abort" || command == "restore_game" )
 					break;
 			}
