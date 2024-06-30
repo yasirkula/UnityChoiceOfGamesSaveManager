@@ -630,7 +630,7 @@ namespace CoGSaveManager
 
 					for( int i = 0; i < scene.Lines.Length; i++ )
 					{
-						string line = scene.Lines[i].TrimStart();
+						string line = scene.Lines[i].Trim();
 						if( line.StartsWith( "*label" ) )
 							scene.Labels[line.Substring( 7 )] = i;
 					}
@@ -641,11 +641,11 @@ namespace CoGSaveManager
 			bool anyPageContentEncountered = false;
 
 			int lineNumber = saveData["lineNum"];
-			SaveManager.LogVerbose( "Extracting choices from '{0}', starting with line {1}: {2}", savePath, lineNumber, scene.Lines[lineNumber].TrimStart() );
+			SaveManager.LogVerbose( "Extracting choices from '{0}', starting with line {1}: {2}", savePath, lineNumber, scene.Lines[lineNumber].Trim() );
 
 			for( ; lineNumber < scene.Lines.Length; lineNumber++ )
 			{
-				string line = OnCurrentLineChanged( scene.Lines[lineNumber].TrimStart() );
+				string line = OnCurrentLineChanged( scene.Lines[lineNumber].Trim() );
 				if( IsLineChoiceOption( line ) )
 				{
 					// If we encounter a choice without first entering a "*choice" or "*fake_choice" command, then we should skip its contents
@@ -693,7 +693,7 @@ namespace CoGSaveManager
 					bool canEvaluateElseCondition = false;
 					while( lineNumber < scene.Lines.Length )
 					{
-						line = OnCurrentLineChanged( scene.Lines[lineNumber].TrimStart() );
+						line = OnCurrentLineChanged( scene.Lines[lineNumber].Trim() );
 						command = GetCommandName( line );
 						if( command == "if" )
 						{
@@ -1674,7 +1674,7 @@ namespace CoGSaveManager
 		{
 			if( lastErrorLine != currentLine && !string.IsNullOrEmpty( currentLine ) )
 			{
-				string errorLineMessage = string.Format( "<b>Error(s) while evaluating: {0}</b>", currentLine.TrimStart() );
+				string errorLineMessage = string.Format( "<b>Error(s) while evaluating: {0}</b>", currentLine.Trim() );
 				Debug.Assert( false, errorLineMessage );
 				sb.Append( "\n" ).Append( errorLineMessage ).Append( "\n" );
 				lastErrorLine = currentLine;
