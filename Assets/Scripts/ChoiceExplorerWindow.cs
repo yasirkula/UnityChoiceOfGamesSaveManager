@@ -809,8 +809,9 @@ namespace CoGSaveManager
 					if( anyPageContentEncountered )
 						break;
 
+					// 'startup' scene may not appear in "*scene_list" (it doesn't in 'The Fernweh Saga: Book One')
 					int currentSceneIndex = scenesList.IndexOf( scene.Name );
-					Assertion( currentSceneIndex >= 0, "*scene_list doesn't contain {0}", scene.Name );
+					Assertion( currentSceneIndex >= 0 || scene.Name.Equals( "startup", StringComparison.OrdinalIgnoreCase ), "*scene_list doesn't contain {0}", scene.Name );
 					if( currentSceneIndex < scenesList.Count - 1 )
 					{
 						scene = GetScene( fs, scenesList[currentSceneIndex + 1] );
