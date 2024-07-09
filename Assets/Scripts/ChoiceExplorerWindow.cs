@@ -586,6 +586,56 @@ namespace CoGSaveManager
 
 				// If the scene ends without a proper command like "*finish" or "*goto_scene", ChoiceScript automatically adds a "*finish" command at the end (Scene.prototype.autofinish)
 				scene.Lines[scene.Lines.Length - 1] = "*finish";
+
+				// Convert all space-indentations to tab-indentations because for games that use 2-space-indentations, it becomes harder to follow where an "*if" command or choice option starts and ends
+				bool isUsingSpaceIndentation = true;
+				foreach( string line in scene.Lines )
+				{
+					if( line.StartsWith( "\t" ) )
+					{
+						isUsingSpaceIndentation = false;
+						break;
+					}
+				}
+
+				if( isUsingSpaceIndentation )
+				{
+					// ChoiceScript doesn't enforce a standardized space-indentation across whole game (some indentations might be 1-space while others might be 2-space). So we have to follow a dynamic approach:
+					// - If space-indentation increases, tab-indentation increases by 1
+					// - If space-indentation decreases, cached tab-indentations up to that space-indentation will be removed
+					// The following example shows the contents of 'tabIndentations' list at each line. The 1st element is always 0 because 0-space indentation corresponds to 0-tab indentation:
+					//*if true (0)        (0-space-indentation, 0-tab-indentation)
+					//  Hello  (0, 1, 1)  (2-space-indentation, 1-tab-indentation)
+					// World   (0, 1)     (1-space-indentation, 1-tab-indentation)
+					//*else    (0)        (0-space-indentation, 0-tab-indentation)
+					// Help    (0, 1)     (1-space-indentation, 1-tab-indentation)
+					List<int> tabIndentations = new List<int>( 32 ) { 0 };
+					for( int i = 0; i < scene.Lines.Length; i++ )
+					{
+						string line = scene.Lines[i];
+						int indentation = CalculateLineIndentation( line );
+						if( indentation >= line.Length ) // Skip whitespace lines
+							continue;
+
+						// If space-indentation is 2, the list should end at [2], i.e. its size should be 3
+						int delta = indentation + 1 - tabIndentations.Count;
+						if( delta > 0 )
+						{
+							// Increment tab-indentation by 1
+							int tab = tabIndentations[tabIndentations.Count - 1] + 1;
+							for( int j = 0; j < delta; j++ )
+								tabIndentations.Add( tab );
+						}
+						else if( delta < 0 )
+						{
+							// Reset excessive tab-indentations
+							tabIndentations.RemoveRange( tabIndentations.Count + delta, -delta );
+						}
+
+						if( indentation > 0 )
+							scene.Lines[i] = line.Substring( indentation ).Insert( 0, new string( '\t', tabIndentations[indentation] ) );
+					}
+				}
 			}
 
 			return scene;
@@ -1498,7 +1548,11 @@ namespace CoGSaveManager
 
 		private int CalculateLineIndentation( int lineNumber )
 		{
-			string line = scene.Lines[lineNumber];
+			return CalculateLineIndentation( scene.Lines[lineNumber] );
+		}
+
+		private int CalculateLineIndentation( string line )
+		{
 			int i = 0;
 			while( i < line.Length && char.IsWhiteSpace( line[i] ) )
 				i++;
