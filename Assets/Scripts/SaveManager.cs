@@ -219,7 +219,6 @@ namespace CoGSaveManager
 					m_steamSavesDirectory = PlayerPrefs.GetString( "SteamSavesPath", "" );
 					if( !string.IsNullOrEmpty( m_steamSavesDirectory ) && !Directory.Exists( m_steamSavesDirectory ) )
 						m_steamSavesDirectory = "";
-
 					if( string.IsNullOrEmpty( m_steamSavesDirectory ) )
 					{
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
@@ -228,18 +227,18 @@ namespace CoGSaveManager
 							string potentialDirectory = string.Format( @"{0}:\Program Files (x86)\Steam\userdata", (char) ( 'C' + i ) );
 							if( Directory.Exists( potentialDirectory ) )
 							{
-								m_steamSavesDirectory = potentialDirectory;
+								SteamSavesDirectory = potentialDirectory;
 								break;
 							}
 						}
 #elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
 						string potentialDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.Personal ), "Library/Application Support/Steam/userdata" );
 						if( Directory.Exists( potentialDirectory ) )
-							m_steamSavesDirectory = potentialDirectory;
+							SteamSavesDirectory = potentialDirectory;
 #elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
 						string potentialDirectory = Path.Combine( Environment.GetFolderPath( Environment.SpecialFolder.Personal ), ".local/share/Steam/userdata" );
 						if( Directory.Exists( potentialDirectory ) )
-							m_steamSavesDirectory = potentialDirectory;
+							SteamSavesDirectory = potentialDirectory;
 #endif
 					}
 				}
@@ -253,6 +252,38 @@ namespace CoGSaveManager
 					m_steamSavesDirectory = value;
 
 					PlayerPrefs.SetString( "SteamSavesPath", value );
+					PlayerPrefs.Save();
+				}
+			}
+		}
+
+		private string m_steamGamesDirectory;
+		private string SteamGamesDirectory
+		{
+			get
+			{
+				if( m_steamGamesDirectory == null )
+				{
+					m_steamGamesDirectory = PlayerPrefs.GetString( "SteamGamesPath", "" );
+					if( !string.IsNullOrEmpty( m_steamGamesDirectory ) && !Directory.Exists( m_steamGamesDirectory ) )
+						m_steamGamesDirectory = "";
+					if( string.IsNullOrEmpty( m_steamGamesDirectory ) )
+					{
+						string potentialDirectory = Path.Combine( Path.GetDirectoryName( SteamSavesDirectory ), "steamapps/common" );
+						if( Directory.Exists( potentialDirectory ) )
+							SteamGamesDirectory = potentialDirectory;
+					}
+				}
+
+				return m_steamGamesDirectory;
+			}
+			set
+			{
+				if( m_steamGamesDirectory != value && !string.IsNullOrEmpty( value ) )
+				{
+					m_steamGamesDirectory = value;
+
+					PlayerPrefs.SetString( "SteamGamesPath", value );
 					PlayerPrefs.Save();
 				}
 			}
@@ -837,7 +868,7 @@ namespace CoGSaveManager
 				if( !string.IsNullOrEmpty( lastGameAsarPath.SaveFileName ) && lastGameAsarPath.SaveFileName == GetReadableSaveFileName( saveFilePath, false ) )
 					gameAsarFilePath = lastGameAsarPath.AsarFilePath;
 				if( string.IsNullOrEmpty( gameAsarFilePath ) || !File.Exists( gameAsarFilePath ) )
-					gameAsarFilePath = Path.Combine( Path.GetDirectoryName( SteamSavesDirectory ), string.Format( "steamapps/common/{0}/resources/app.asar", RemoveInvalidFilenameCharsFromString( GetReadableSaveFileName( GameSaveFilePath, true ) ) ) );
+					gameAsarFilePath = Path.Combine( SteamGamesDirectory, string.Format( "{0}/resources/app.asar", RemoveInvalidFilenameCharsFromString( GetReadableSaveFileName( GameSaveFilePath, true ) ) ) );
 			}
 			catch
 			{
@@ -852,6 +883,8 @@ namespace CoGSaveManager
 				{
 					PlayerPrefs.SetString( "LastGameAsar", JsonUtility.ToJson( new GameAsarPath() { SaveFileName = GetReadableSaveFileName( saveFilePath, false ), AsarFilePath = paths[0] } ) );
 					PlayerPrefs.Save();
+
+					SteamGamesDirectory = new FileInfo( paths[0] ).Directory.Parent.Parent.FullName;
 
 					choiceExplorerWindow.Show( saveFilePath, paths[0] );
 				}, null, FileBrowser.PickMode.Files,
