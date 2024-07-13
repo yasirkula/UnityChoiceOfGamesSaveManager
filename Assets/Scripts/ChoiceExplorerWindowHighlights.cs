@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,6 +10,29 @@ namespace CoGSaveManager
 	public partial class ChoiceExplorerWindow
 	{
 #pragma warning disable 0649
+		private struct PreserveScrollPositionWithinScope : IDisposable
+		{
+			private ChoiceExplorerWindow window;
+			private Text entry;
+			private int localLineNumber, globalLineNumber;
+
+			public PreserveScrollPositionWithinScope( ChoiceExplorerWindow window )
+			{
+				this.window = window;
+				window.TryGetLineNumberAtScreenPosition( window.scrollView.viewport.TransformPoint( new Vector2( 100f, window.scrollView.viewport.rect.max.y - 2f ) ), out entry, out localLineNumber, out globalLineNumber );
+			}
+
+			public void Dispose()
+			{
+				if( globalLineNumber >= 0 )
+				{
+					localLineNumber = window.ConvertGlobalLineNumberToLocalLineNumber( globalLineNumber, out entry );
+					Vector2 scrollPosition = new Vector2( window.scrollView.content.anchoredPosition.x, -window.ConvertLocalEntryPositionToGlobal( entry, new Vector2( 0f, entry.cachedTextGenerator.lines[localLineNumber].topY ) ).y );
+					window.scrollView.content.anchoredPosition = window.scrollView.ClampScrollPosition( scrollPosition );
+				}
+			}
+		}
+
 		/// <summary>
 		/// Highlights a single line.
 		/// </summary>

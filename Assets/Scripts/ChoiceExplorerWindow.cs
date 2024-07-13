@@ -453,31 +453,37 @@ namespace CoGSaveManager
 
 		private void SetWrapLines( bool wrapLines )
 		{
-			WrapLines = wrapLines;
-
-			wrapLinesButton.targetGraphic.color = wrapLines ? wrapLinesActiveColor : wrapLinesInactiveColor;
-			entriesContentSizeFitter.horizontalFit = wrapLines ? ContentSizeFitter.FitMode.Unconstrained : ContentSizeFitter.FitMode.PreferredSize;
-
-			if( wrapLines )
+			using( new PreserveScrollPositionWithinScope( this ) )
 			{
-				scrollView.content.anchoredPosition = new Vector2( 0f, scrollView.content.anchoredPosition.y );
-				scrollView.content.sizeDelta = new Vector2( 0f, scrollView.content.sizeDelta.y );
+				WrapLines = wrapLines;
+
+				wrapLinesButton.targetGraphic.color = wrapLines ? wrapLinesActiveColor : wrapLinesInactiveColor;
+				entriesContentSizeFitter.horizontalFit = wrapLines ? ContentSizeFitter.FitMode.Unconstrained : ContentSizeFitter.FitMode.PreferredSize;
+
+				if( wrapLines )
+				{
+					scrollView.content.anchoredPosition = new Vector2( 0f, scrollView.content.anchoredPosition.y );
+					scrollView.content.sizeDelta = new Vector2( 0f, scrollView.content.sizeDelta.y );
+				}
+
+				foreach( Text entry in activeEntries )
+					entry.horizontalOverflow = wrapLines ? HorizontalWrapMode.Wrap : HorizontalWrapMode.Overflow;
+
+				RefreshEntriesLayoutGroup();
 			}
-
-			foreach( Text entry in activeEntries )
-				entry.horizontalOverflow = wrapLines ? HorizontalWrapMode.Wrap : HorizontalWrapMode.Overflow;
-
-			RefreshEntriesLayoutGroup();
 		}
 
 		private void SetFontSize( int fontSize )
 		{
-			FontSize = fontSize;
+			using( new PreserveScrollPositionWithinScope( this ) )
+			{
+				FontSize = fontSize;
 
-			foreach( Text entry in activeEntries )
-				entry.fontSize = fontSize;
+				foreach( Text entry in activeEntries )
+					entry.fontSize = fontSize;
 
-			RefreshEntriesLayoutGroup();
+				RefreshEntriesLayoutGroup();
+			}
 		}
 
 		private void RefreshEntriesLayoutGroup()
