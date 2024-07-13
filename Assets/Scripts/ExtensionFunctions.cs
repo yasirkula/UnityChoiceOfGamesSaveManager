@@ -1,4 +1,7 @@
-﻿namespace CoGSaveManager
+﻿using UnityEngine;
+using UnityEngine.UI;
+
+namespace CoGSaveManager
 {
 	public static class ExtensionFunctions
 	{
@@ -14,6 +17,21 @@
 			}
 
 			return true;
+		}
+
+		public static void SetOpacity( this Graphic graphic, float opacity )
+		{
+			Color color = graphic.color;
+			color.a = opacity;
+			graphic.color = color;
+		}
+
+		public static Vector2 ClampScrollPosition( this ScrollRect scrollView, Vector2 scrollPosition )
+		{
+			Vector2 scrollableSize = scrollView.content.rect.size - scrollView.viewport.rect.size;
+			scrollPosition.x = Mathf.Min( 0f, Mathf.Max( scrollPosition.x, -scrollableSize.x ) );
+			scrollPosition.y = Mathf.Max( 0f, Mathf.Min( scrollPosition.y, scrollableSize.y ) );
+			return scrollPosition;
 		}
 	}
 }

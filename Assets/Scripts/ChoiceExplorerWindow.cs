@@ -12,7 +12,7 @@ using Random = UnityEngine.Random;
 namespace CoGSaveManager
 {
 	[DefaultExecutionOrder( 1 )] /// Greater than <see cref="ScrollRect"/>.
-	public class ChoiceExplorerWindow : MonoBehaviour
+	public partial class ChoiceExplorerWindow : MonoBehaviour
 	{
 		private enum TokenType { None, Variable, Bool, Number, String };
 		private enum EvaluateFlags
@@ -233,6 +233,10 @@ namespace CoGSaveManager
 		private Color wrapLinesInactiveColor;
 
 		[SerializeField]
+		private Canvas canvas;
+		private float CanvasScale { get { return canvas.transform.localScale.x; } }
+
+		[SerializeField]
 		private ScrollRect scrollView;
 
 		[SerializeField]
@@ -240,6 +244,9 @@ namespace CoGSaveManager
 
 		[SerializeField]
 		private ContentSizeFitter entriesContentSizeFitter;
+
+		[SerializeField]
+		private PointerEventListener entriesPointerEventListener;
 
 		[SerializeField]
 		private Text entryPrefab;
@@ -288,6 +295,7 @@ namespace CoGSaveManager
 			SetWrapLines( WrapLines );
 
 			scrollView.onValueChanged.AddListener( ( scrollPos ) => RefreshLoadMoreLinesButtonPositions() );
+			entriesPointerEventListener.OnClick = OnEntryClicked;
 			copyTextButton.onClick.AddListener( CopyAllEntries );
 			wrapLinesButton.onClick.AddListener( () => SetWrapLines( !WrapLines ) );
 			toggleFontSizeButton.onClick.AddListener( () => SetFontSize( Mathf.Clamp( ( FontSize + 1 ) % 21, 10, 20 ) ) );
@@ -327,6 +335,7 @@ namespace CoGSaveManager
 			topLineNumber = int.MinValue;
 			bottomLineNumber = int.MaxValue;
 			currentLine = lastErrorLine = null;
+			indentationHighlightStartEntry = indentationHighlightEndEntry = null;
 
 			string[] extractedTexts;
 			string saveFileContents = File.ReadAllText( savePath );
@@ -366,11 +375,11 @@ namespace CoGSaveManager
 			scrollView.verticalNormalizedPosition = 1f;
 		}
 
-		private void LoadMoreLines( bool downwards )
+		private void LoadMoreLines( bool downwards, int lineCount = LoadMoreLinesCount )
 		{
 			if( downwards )
 			{
-				int lineCount = Mathf.Min( bottomLineNumber + LoadMoreLinesCount, scene.Lines.Length - 1 ) - bottomLineNumber;
+				lineCount = Mathf.Min( bottomLineNumber + lineCount, scene.Lines.Length - 1 ) - bottomLineNumber;
 				string[] texts = ExtractLines( bottomLineNumber + 1, lineCount );
 				bottomLineNumber += lineCount;
 
@@ -379,7 +388,7 @@ namespace CoGSaveManager
 			}
 			else
 			{
-				int lineCount = topLineNumber - Mathf.Max( topLineNumber - LoadMoreLinesCount, 0 );
+				lineCount = topLineNumber - Mathf.Max( topLineNumber - lineCount, 0 );
 				topLineNumber -= lineCount;
 				string[] texts = ExtractLines( topLineNumber, lineCount );
 
@@ -488,6 +497,14 @@ namespace CoGSaveManager
 			contentPrevWidth = scrollView.content.rect.width;
 
 			RefreshLoadMoreLinesButtonPositions();
+			RefreshIndentationHighlight();
+
+			if( lineHighlightCoroutine != null )
+			{
+				StopCoroutine( lineHighlightCoroutine );
+				lineHighlightCoroutine = null;
+				lineHighlight.SetOpacity( 0f );
+			}
 		}
 
 		private void RefreshLoadMoreLinesButtonVisibilities()
@@ -880,34 +897,10 @@ namespace CoGSaveManager
 						saveData["temps"]["choice_substack"].Add( stackEntry );
 					}
 
-					/// To learn why <see cref="Token.AsVariableName"/> is used for "goto" and "gosub" commands, see the comment inside "goto_scene".
-					/// ---
-					/// For "goto" command, the label name is the whole line after the command name.
-					/// For "gosub" command, the label name is the first word after the command name.
-					/// For "goto" and "gosub" commands, if the label name contains '{' or '[' characters, then it's evaluated as a standard token by ChoiceScript.
-					/// Otherwise, its value is assigned as is (i.e. "goto label+1" will set the label to "label+1").
-					/// For "gotoref" command, label name is always evaluated as a standard token by ChoiceScript. However, if the evaluated result is a string that
-					/// contains '{' or '[' characters, then that string is evaluated once again (double evaluation!).
-					string label;
-					int index = command.Length + 1;
-					if( command == "goto" )
-						label = line.Substring( index ).Trim();
-					else if( command == "gotoref" )
-						label = EvaluateExpression( line, ref index ).AsString();
-					else
-					{
-						List<Token> arguments = GetCommandArguments( line, EvaluateFlags.StopAtFirstWord );
-						label = arguments[0].AsVariableName();
+					List<Token> arguments;
+					ParseGosubCommand( command, line, out lineNumber, out arguments );
+					if( command == "gosub" )
 						SetVariable( "param", new JSONArray( ( arguments.Count > 1 ) ? arguments.GetRange( 1, arguments.Count - 1 ).ConvertAll( ( token ) => (JSONNode) token ) : new List<JSONNode>() ), true );
-					}
-
-					if( label.IndexOf( '{' ) >= 0 || label.IndexOf( '[' ) >= 0 )
-					{
-						index = 0;
-						label = EvaluateExpression( label, ref index ).AsVariableName();
-					}
-
-					lineNumber = scene.GetLabelLineNumber( label );
 				}
 				else if( command == "goto_scene" || command == "gosub_scene" )
 				{
@@ -998,6 +991,43 @@ namespace CoGSaveManager
 				AppendLineToResult( scene.Lines[lineNumber] + " <b>(No choice found...)</b>", result );
 				topLineNumber = bottomLineNumber = lineNumber;
 			}
+		}
+
+		private void ParseGosubCommand( string command, string line, out int lineNumber, out List<Token> arguments )
+		{
+			/// To learn why <see cref="Token.AsVariableName"/> is used for "goto" and "gosub" commands, see the comment inside "goto_scene".
+			/// ---
+			/// For "goto" command, the label name is the whole line after the command name.
+			/// For "gosub" command, the label name is the first word after the command name.
+			/// For "goto" and "gosub" commands, if the label name contains '{' or '[' characters, then it's evaluated as a standard token by ChoiceScript.
+			/// Otherwise, its value is assigned as is (i.e. "goto label+1" will set the label to "label+1").
+			/// For "gotoref" command, label name is always evaluated as a standard token by ChoiceScript. However, if the evaluated result is a string that
+			/// contains '{' or '[' characters, then that string is evaluated once again (double evaluation!).
+			string label;
+			int index = command.Length + 1;
+			if( command == "goto" )
+			{
+				arguments = null;
+				label = line.Substring( index ).Trim();
+			}
+			else if( command == "gotoref" )
+			{
+				arguments = null;
+				label = EvaluateExpression( line, ref index ).AsString();
+			}
+			else
+			{
+				arguments = GetCommandArguments( line, EvaluateFlags.StopAtFirstWord );
+				label = arguments[0].AsVariableName();
+			}
+
+			if( label.IndexOf( '{' ) >= 0 || label.IndexOf( '[' ) >= 0 )
+			{
+				index = 0;
+				label = EvaluateExpression( label, ref index ).AsVariableName();
+			}
+
+			lineNumber = scene.GetLabelLineNumber( label );
 		}
 
 		private string[] ExtractLines( int startLineNumber, int lineCount )
