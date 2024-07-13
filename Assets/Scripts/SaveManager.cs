@@ -888,7 +888,7 @@ namespace CoGSaveManager
 
 					choiceExplorerWindow.Show( saveFilePath, paths[0] );
 				}, null, FileBrowser.PickMode.Files,
-				initialPath: Path.Combine( Path.GetDirectoryName( SteamSavesDirectory ), string.Format( "steamapps/common/" ) ), initialFilename: "app.asar", title: "Select 'steamapps/common/GAME/resources/app.asar'" );
+				initialPath: SteamGamesDirectory, initialFilename: "app.asar", title: "Select 'steamapps/common/GAME/resources/app.asar'" );
 			}
 		}
 
