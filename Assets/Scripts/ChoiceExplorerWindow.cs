@@ -1311,7 +1311,16 @@ namespace CoGSaveManager
 
 						currValue = EvaluateExpression( line, ref index, 1, FlagsForBlockEvaluation( flags ) ).UnpackVariable();
 						if( currValue.Type == TokenType.String )
-							currValue = Token.Variable( currValue.AsString() );
+						{
+							/// Sometimes, a number variable can be saved as string by ChoiceScript (e.g. "5" instead of 5). When these variables are accessed as ref variables,
+							/// we need to convert them to number tokens because it's impossible to have a variable with a name consisting of digits only (e.g. "5"). This issue
+							/// occurs in "Professor of Magical Studies" where most number variables are saved as strings for unknown reasons.
+							double number;
+							if( double.TryParse( currValue.AsString(), NumberStyles.Float, CultureInfo.InvariantCulture, out number ) )
+								currValue = Token.Number( number );
+							else
+								currValue = Token.Variable( currValue.AsString() );
+						}
 
 						SaveManager.LogVerbose( "Evaluated ref variable '{0}' with result {1}'", line.Substring( startIndex, index - startIndex + 1 ), currValue );
 						Assertion( line[index] == '}', "Expected '}}', found '{0}' at '{1}'", line[index], index ); // '}}' is intentional, it's escaped (otherwise string.Format throws FormatException)
