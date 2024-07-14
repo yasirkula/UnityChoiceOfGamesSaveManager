@@ -920,8 +920,6 @@ namespace CoGSaveManager
 						saveData["stats"]["choice_subscene_stack"].Add( stackEntry );
 					}
 
-					saveData["temps"] = new JSONObject();
-
 					/// Not using <see cref="Token.AsString"/> while reading scene and label names (same goes for "goto" and "gosub" commands) because their
 					/// string values are entered without quotation marks in these commands and thus, they're interpreted as <see cref="TokenType.Variable"/>s.
 					/// Calling <see cref="Token.AsString"/> on them would attempt to fetch their non-existent variable values instead of just returning their
@@ -933,7 +931,9 @@ namespace CoGSaveManager
 					List<Token> arguments = GetCommandArguments( line, sceneAndLabelNameEvaluationFlags, sceneAndLabelNameEvaluationFlags );
 					scene = GetScene( fs, arguments[0].AsVariableName() );
 					lineNumber = ( arguments.Count >= 2 ) ? scene.GetLabelLineNumber( arguments[1].AsVariableName() ) : -1;
-					SetVariable( "param", new JSONArray( ( arguments.Count > 2 ) ? arguments.GetRange( 2, arguments.Count - 2 ).ConvertAll( ( token ) => (JSONNode) token ) : new List<JSONNode>() ), true );
+					JSONArray param = new JSONArray( ( arguments.Count > 2 ) ? arguments.GetRange( 2, arguments.Count - 2 ).ConvertAll( ( token ) => (JSONNode) token ) : new List<JSONNode>() );
+					saveData["temps"] = new JSONObject();
+					SetVariable( "param", param, true );
 				}
 				else if( command == "return" )
 				{
