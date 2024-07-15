@@ -264,6 +264,7 @@ namespace CoGSaveManager
 		private static JSONNode saveData;
 		private string savePath;
 		private string gameAsarFilePath;
+		private static bool mergedPreviousBooksStats;
 
 		private float contentPrevWidth;
 		private static readonly StringBuilder sb = new StringBuilder( 12000 );
@@ -335,6 +336,7 @@ namespace CoGSaveManager
 			topLineNumber = int.MinValue;
 			bottomLineNumber = int.MaxValue;
 			currentLine = lastErrorLine = null;
+			mergedPreviousBooksStats = false;
 			indentationHighlightStartEntry = indentationHighlightEndEntry = null;
 
 			string[] extractedTexts;
@@ -1579,6 +1581,27 @@ namespace CoGSaveManager
 					variableValue = default( T );
 
 				return true;
+			}
+
+			// At the very beginning of the game, when importing a save from the previous installment of the series, the stats that 
+			// exist in the new installment but not in the previous installment aren't saved to ["stats"] by ChoiceScript. But they
+			// can be retrieved from ["undeleted"]["startingStats"]. Merge these stats and try again.
+			if( !mergedPreviousBooksStats )
+			{
+				mergedPreviousBooksStats = true;
+
+				if( saveData.TryGetValue( "undeleted", out value ) && value.TryGetValue( "startingStats", out value ) )
+				{
+					SaveManager.LogVerbose( "Merging previous installment's stats with current stats" );
+
+					foreach( KeyValuePair<string, JSONNode> kvPair in value )
+					{
+						if( !saveData["stats"].HasKey( kvPair.Key ) )
+							saveData["stats"][kvPair.Key] = kvPair.Value;
+					}
+				}
+
+				return TryGetVariable( variableName, out variableValue );
 			}
 
 			variableValue = default( T );
