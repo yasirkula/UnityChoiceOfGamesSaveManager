@@ -1164,9 +1164,7 @@ namespace CoGSaveManager
 		private Token EvaluateFunction( string line, ref int index, int indexStartOffset = 0, EvaluateFlags flags = EvaluateFlags.None )
 		{
 			// Ignore whitespace before the opening parenthesis
-			index += indexStartOffset;
-			while( char.IsWhiteSpace( line[index] ) )
-				index++;
+			index = SkipWhitespace( line, index + indexStartOffset );
 
 			Assertion( line[index] == '(', "Expected '(', found '{0}' at {1}", line[index], index );
 			Token result = EvaluateExpression( line, ref index, 1, FlagsForBlockEvaluation( flags ) );
@@ -1618,23 +1616,14 @@ namespace CoGSaveManager
 
 		private int CalculateLineIndentation( string line )
 		{
-			int i = 0;
-			while( i < line.Length && char.IsWhiteSpace( line[i] ) )
-				i++;
-
-			return i;
+			return SkipWhitespace( line, 0 );
 		}
 
 		private bool IsLineWhitespace( int lineNumber )
 		{
 			string line = scene.Lines[lineNumber];
-			for( int i = 0; i < line.Length; i++ )
-			{
-				if( !char.IsWhiteSpace( line[i] ) )
-					return line.ContainsAt( "*comment", i ); // Consider "*comment" lines whitespace
-			}
-
-			return true;
+			int index = SkipWhitespace( line, 0 );
+			return ( index >= line.Length ) || line.ContainsAt( "*comment", index ); // Consider "*comment" lines whitespace
 		}
 
 		private bool IsLineChoiceOption( string line )
@@ -1644,10 +1633,7 @@ namespace CoGSaveManager
 			// *if (variable = "Hello \"friend\"") #Option
 			// Example invalid line:
 			// Then the ATM showed #### in the PIN section.
-			int index = 0;
-			while( index < line.Length && char.IsWhiteSpace( line[index] ) )
-				index++;
-
+			int index = SkipWhitespace( line, 0 );
 			if( index >= line.Length - 1 ) // End of line is reached (if last character is '#', this is still not a choice option because the choice has no label in that case)
 				return false;
 			else if( line[index] == '#' ) // A guaranteed choice option
@@ -1695,10 +1681,7 @@ namespace CoGSaveManager
 		/// </summary>
 		private void GetCommandNameStartEndIndices( string line, out int startIndex, out int endIndex )
 		{
-			int index = 0;
-			while( index < line.Length && char.IsWhiteSpace( line[index] ) )
-				index++;
-
+			int index = SkipWhitespace( line, 0 );
 			if( index >= line.Length - 1 || line[index] != '*' )
 			{
 				startIndex = endIndex = -1;
@@ -1728,6 +1711,14 @@ namespace CoGSaveManager
 			}
 
 			return result;
+		}
+
+		private int SkipWhitespace( string line, int index )
+		{
+			while( index < line.Length && char.IsWhiteSpace( line[index] ) )
+				index++;
+
+			return index;
 		}
 
 		/// <param name="allLetters">If <c>true</c>, all letters are capitalized. Otherwise, only the first letter is capitalized.</param>
