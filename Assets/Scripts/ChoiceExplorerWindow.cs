@@ -1238,7 +1238,7 @@ namespace CoGSaveManager
 						string token = line.Substring( tokenStartIndex, index - tokenStartIndex + 1 );
 						SaveManager.LogVerbose( "Read token '{0}' at {1}-{2}", token, tokenStartIndex, index );
 
-						if( token == "not" )
+						if( token == "not" && GetFirstNonWhitespaceCharacter( line, index + 1 ) == '(' )
 						{
 							Assertion( currValue.Type == TokenType.None || implicitVariable != null, "No value was expected before token '{0}' at {1}, found {2}", token, tokenStartIndex, currValue );
 							currValue = Token.Bool( !EvaluateFunction( line, ref index, 1, flags ).AsBool() );
@@ -1258,22 +1258,22 @@ namespace CoGSaveManager
 							Assertion( currValue.Type != TokenType.None, "A value was expected before token '{0}' at {1}", token, tokenStartIndex );
 							return Token.Number( currValue.AsDouble() % EvaluateExpression( line, ref index, 1, flags ).AsDouble() );
 						}
-						else if( token == "log" )
+						else if( token == "log" && GetFirstNonWhitespaceCharacter( line, index + 1 ) == '(' )
 						{
 							Assertion( currValue.Type == TokenType.None || implicitVariable != null, "No value was expected before function '{0}' at {1}, found {2}", token, tokenStartIndex, currValue );
 							currValue = Token.Number( Math.Log( EvaluateFunction( line, ref index, 1, flags ).AsDouble(), 10.0 ) );
 						}
-						else if( token == "length" )
+						else if( token == "length" && GetFirstNonWhitespaceCharacter( line, index + 1 ) == '(' )
 						{
 							Assertion( currValue.Type == TokenType.None || implicitVariable != null, "No value was expected before function '{0}' at {1}, found {2}", token, tokenStartIndex, currValue );
 							currValue = Token.Number( EvaluateFunction( line, ref index, 1, flags ).AsString().Length );
 						}
-						else if( token == "round" )
+						else if( token == "round" && GetFirstNonWhitespaceCharacter( line, index + 1 ) == '(' )
 						{
 							Assertion( currValue.Type == TokenType.None || implicitVariable != null, "No value was expected before function '{0}' at {1}, found {2}", token, tokenStartIndex, currValue );
 							currValue = Token.Number( Math.Round( EvaluateFunction( line, ref index, 1, flags ).AsDouble(), MidpointRounding.AwayFromZero ) );
 						}
-						else if( token == "timestamp" ) // Seconds since epoch (January 1, 1970)
+						else if( token == "timestamp" && GetFirstNonWhitespaceCharacter( line, index + 1 ) == '(' ) // Seconds since epoch (January 1, 1970)
 						{
 							Assertion( currValue.Type == TokenType.None || implicitVariable != null, "No value was expected before function '{0}' at {1}, found {2}", token, tokenStartIndex, currValue );
 							currValue = Token.Number( ( DateTime.Parse( EvaluateFunction( line, ref index, 1, flags ).AsString(), CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeLocal ) - new DateTime( 1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc ) ).TotalSeconds );
@@ -1711,6 +1711,12 @@ namespace CoGSaveManager
 			}
 
 			return result;
+		}
+
+		private char GetFirstNonWhitespaceCharacter( string line, int index )
+		{
+			index = SkipWhitespace( line, index );
+			return ( index < line.Length ) ? line[index] : '\0';
 		}
 
 		private int SkipWhitespace( string line, int index )
