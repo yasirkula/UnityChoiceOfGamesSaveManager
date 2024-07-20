@@ -407,10 +407,7 @@ namespace CoGSaveManager
 
 			// Try to remain at the same text position after loading more lines upwards
 			if( !downwards )
-			{
-				scrollView.content.anchoredPosition += new Vector2( 0f, Mathf.Max( 0f, scrollView.content.sizeDelta.y - prevContentHeight ) );
-				RefreshEntriesLayoutGroup();
-			}
+				scrollView.content.anchoredPosition = scrollView.ClampScrollPosition( scrollView.content.anchoredPosition + new Vector2( 0f, scrollView.content.sizeDelta.y - prevContentHeight ) );
 		}
 
 		private void InsertNewEntryAt( int index, string text )
@@ -493,7 +490,7 @@ namespace CoGSaveManager
 			entriesContentSizeFitter.enabled = true;
 			entriesLayoutGroup.enabled = true;
 
-			LayoutRebuilder.ForceRebuildLayoutImmediate( scrollView.content );
+			LayoutRebuilder.ForceRebuildLayoutImmediate( (RectTransform) scrollView.transform );
 			Canvas.ForceUpdateCanvases();
 
 			// Make sure that the content doesn't go out-of-bounds
