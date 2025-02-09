@@ -530,7 +530,13 @@ namespace CoGSaveManager
 				}, null, FileBrowser.PickMode.Folders, initialPath: initialPath, title: "Select the target game's save directory" );
 			} );
 
-			pickOutputDirectoryButton.onClick.AddListener( () => FileBrowser.ShowSaveDialog( ( paths ) => OutputDirectory = paths[0], null, FileBrowser.PickMode.Folders, title: "Select the folder where the save files will be stored", initialPath: OutputDirectory, saveButtonText: "Select" ) );
+			pickOutputDirectoryButton.onClick.AddListener( () =>
+			{
+				genericOKCancelDialog.Show( "IMPORTANT!\n\nYou don't need to set different CoG Save Storage paths for different games; they are automatically grouped under this folder. It's highly recommended to keep this path as is. If you really want to change it, don't set it to a CoG title's saves folder or Steam userdata folder; otherwise it will break the save manager.", () =>
+				{
+					FileBrowser.ShowSaveDialog( ( paths ) => OutputDirectory = paths[0], null, FileBrowser.PickMode.Folders, title: "Select the folder where the save files will be stored", initialPath: OutputDirectory, saveButtonText: "Select" );
+				} );
+			} );
 
 			saveButton.onClick.AddListener( () =>
 			{
