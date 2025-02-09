@@ -475,7 +475,7 @@ namespace CoGSaveManager
 							{
 								SaveEntry saveEntry = automatedSaves.RemoveFirst();
 
-								Directory.Delete( saveEntry.directory, true );
+								DeleteDirectoryRecursively( saveEntry.directory );
 								automatedSaveDirectoryNames.Remove( Path.GetFileName( saveEntry.directory ) );
 							}
 
@@ -576,7 +576,7 @@ namespace CoGSaveManager
 						{
 							string playthroughDirectory = Path.Combine( Path.Combine( OutputDirectory, GetSaveFileUserID( saveFile ) ), string.Concat( new FileInfo( saveFile ).Directory.Parent.Name, "_", GetReadableSaveFileName( saveFile, false ), "_", playthrough ) );
 							if( Directory.Exists( playthroughDirectory ) )
-								Directory.Delete( playthroughDirectory, true );
+								DeleteDirectoryRecursively( playthroughDirectory );
 
 							// If currently active playthrough is deleted, refresh the save files immediately
 							if( saveFile == GameSaveFilePath && playthrough == currentPlaythrough )
@@ -833,7 +833,7 @@ namespace CoGSaveManager
 			},
 			() => // onDelete
 			{
-				Directory.Delete( saveEntry.directory, true );
+				DeleteDirectoryRecursively( saveEntry.directory );
 
 				if( isAutomatedSave )
 				{
@@ -1236,6 +1236,23 @@ namespace CoGSaveManager
 
 			foreach( DirectoryInfo subDirectory in directory.GetDirectories() )
 				CopyDirectoryRecursively( subDirectory.FullName, Path.Combine( destinationDirectory, subDirectory.Name ), isSaving );
+		}
+
+		private void DeleteDirectoryRecursively( string directory )
+		{
+			// Credit: https://stackoverflow.com/a/8521573/2373034
+			File.SetAttributes( directory, FileAttributes.Normal );
+
+			foreach( string file in Directory.GetFiles( directory ) )
+			{
+				File.SetAttributes( file, FileAttributes.Normal );
+				File.Delete( file );
+			}
+
+			foreach( string subDirectory in Directory.GetDirectories( directory ) )
+				DeleteDirectoryRecursively( subDirectory );
+
+			Directory.Delete( directory, true );
 		}
 
 		private string RemoveInvalidFilenameCharsFromString( string str )
