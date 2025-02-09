@@ -85,16 +85,13 @@ namespace CoGSaveManager
 		private LoadConfirmationDialog loadConfirmationDialog;
 
 		[SerializeField]
-		private SaveOverwriteDialog saveOverwriteDialog;
-
-		[SerializeField]
 		private SaveFileSelectionDialog saveFileSelectionDialog;
 
 		[SerializeField]
 		private SwitchGameDialog switchGameDialog;
 
 		[SerializeField]
-		private ReducedAutomatedSaveCountDialog reducedAutomatedSaveCountDialog;
+		private GenericOKCancelDialog genericOKCancelDialog;
 
 		[SerializeField]
 		private ProgressbarDialog progressbarDialog;
@@ -467,7 +464,7 @@ namespace CoGSaveManager
 						NumberOfAutomatedSaves = newSaveCount;
 					else
 					{
-						reducedAutomatedSaveCountDialog.Show( newSaveCount, automatedSaves.Count, () =>
+						genericOKCancelDialog.Show( string.Format( "New number of automated save files ({0}) is less than the current number of automated save files ({1}). Oldest automated save files will be deleted. Confirm?", newSaveCount, automatedSaves.Count ), () =>
 						{
 							NumberOfAutomatedSaves = newSaveCount;
 
@@ -540,7 +537,7 @@ namespace CoGSaveManager
 				if( !string.IsNullOrEmpty( GameSaveFilePath ) && !string.IsNullOrEmpty( manualSavesDirectory ) && !string.IsNullOrEmpty( ManualSaveName ) && File.Exists( GameSaveFilePath ) )
 				{
 					if( manualSaves.Find( ( saveEntry ) => saveEntry.saveName == ManualSaveName ) != null )
-						saveOverwriteDialog.Show( ManualSaveName, SaveGameManual );
+						genericOKCancelDialog.Show( string.Format( "Save \"{0}\" already exists. It will be overwritten. Confirm?", ManualSaveName ), SaveGameManual );
 					else
 						SaveGameManual();
 				}

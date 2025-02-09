@@ -1,9 +1,10 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 using UnityEngine.UI;
 
 namespace CoGSaveManager
 {
-	public class SaveOverwriteDialog : MonoBehaviour
+	public class GenericOKCancelDialog : MonoBehaviour
 	{
 #pragma warning disable 0649
 		[SerializeField]
@@ -13,31 +14,32 @@ namespace CoGSaveManager
 		private Button okButton, cancelButton;
 #pragma warning restore 0649
 
-		private string originalText;
-
-		private System.Action onConfirm;
+		private Action onConfirm, onCancel;
 
 		private void Awake()
 		{
 			okButton.onClick.AddListener( () =>
 			{
+				gameObject.SetActive( false );
+
 				if( onConfirm != null )
 					onConfirm();
-
-				gameObject.SetActive( false );
 			} );
 
-			cancelButton.onClick.AddListener( () => gameObject.SetActive( false ) );
+			cancelButton.onClick.AddListener( () =>
+			{
+				gameObject.SetActive( false );
+
+				if( onCancel != null )
+					onCancel();
+			} );
 		}
 
-		public void Show( string saveName, System.Action onConfirm )
+		public void Show( string text, Action onConfirm, Action onCancel = null )
 		{
-			if( originalText == null )
-				originalText = text.text;
-
-			text.text = string.Format( originalText, saveName );
-
+			this.text.text = text;
 			this.onConfirm = onConfirm;
+			this.onCancel = onCancel;
 
 			gameObject.SetActive( true );
 		}
